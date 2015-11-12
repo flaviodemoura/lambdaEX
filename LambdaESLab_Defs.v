@@ -1,0 +1,204 @@
+(********************************************************************************
+* Formalization of labelled lambda ex calculus				        *		
+*									        *
+* Flavio L. C. de Moura & Daniel L. Ventura & Washington R. Segundo, 2014	*
+*********************************************************************************)
+
+Set Implicit Arguments.
+Require Import Metatheory LambdaES_Defs LambdaES_Infra LambdaES_FV.
+Require Import Rewriting_Defs Rewriting_Lib.
+Require Import Equation_C Lambda Lambda_Ex.
+
+(*
+(** Given a relation Red, constructs its contextual closure just over Lterms *)
+Inductive L_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm -> Prop :=
+  | L_redex : forall t s, Red t s -> L_contextual_closure Red t s
+  | L_app_left : forall t t' u, Lterm u -> L_contextual_closure Red t t' -> 
+	  		L_contextual_closure Red (pterm_app t u) (pterm_app t' u)
+  | L_app_right : forall t u u', Lterm t -> L_contextual_closure Red u u' -> 
+	  		L_contextual_closure Red (pterm_app t u) (pterm_app t u')
+  | L_abs_in : forall t t' L, (forall x, x \notin L -> L_contextual_closure Red (t^x) (t'^x)) 
+      -> L_contextual_closure Red (pterm_abs t) (pterm_abs t')
+.
+
+(** Given a relation Red, constructs its parallel contextual closure *)
+Inductive p_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm -> Prop :=
+  | p_redex : forall t s, Red t s -> p_contextual_closure Red t s
+  | p_app : forall t t' u u', p_contextual_closure Red t t' -> p_contextual_closure Red u u' ->
+	  		p_contextual_closure Red (pterm_app t u) (pterm_app t' u')
+  | p_abs_in : forall t t' L, (forall x, x \notin L -> p_contextual_closure Red (t^x) (t'^x)) -> 
+               p_contextual_closure Red (pterm_abs t) (pterm_abs t')
+  | p_subst : forall t t' u u' L, (forall x, x \notin L -> p_contextual_closure Red (t^x) (t'^x)) -> 
+              p_contextual_closure Red u u' -> 
+	      p_contextual_closure Red  (pterm_sub t u) (pterm_sub t' u') .
+*)
+
+(** Step 1 *)
+
+(** Grammar of labelled pre-terms. Labelled terms extend the ordinary
+ terms with a new constructor for marked explicit substitutions. *)
+
+Inductive lab_term : pterm -> Prop :=
+  | lab_term_var : forall x,
+      lab_term (pterm_fvar x)
+  | lab_term_app : forall t1 t2,
+      lab_term t1 -> 
+      lab_term t2 -> 
+      lab_term (pterm_app t1 t2)
+  | lab_term_abs : forall L t1,
+      (forall x, x \notin L -> lab_term (t1 ^ x)) ->
+      lab_term (pterm_abs t1)
+  | lab_term_sub : forall L t1 t2,
+     (forall x, x \notin L -> lab_term (t1 ^ x)) ->
+      lab_term t2 -> lab_term (t1[t2])
+  | lab_term_sub' : forall L t1 t2,
+     (forall x, x \notin L -> lab_term (t1 ^ x)) ->
+      (term t2) -> (SN lex t2) -> 
+      lab_term (t1 [[ t2 ]]).
+
+Definition lab_body (t : pterm) := 
+           exists L, forall x, x \notin L -> lab_term (t ^ x).
+
+(** Given a relation Red, constructs the contextual closure for labelled terms. *)
+
+Inductive lab_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm -> Prop :=
+  | lab_redex : forall t s, Red t s -> lab_contextual_closure Red t s
+  | lab_app_left : forall t t' u, lab_term u -> lab_contextual_closure Red t t' -> 
+	  		lab_contextual_closure Red (pterm_app t u) (pterm_app t' u)
+  | lab_app_right : forall t u u', lab_term t -> lab_contextual_closure Red u u' -> 
+	  		lab_contextual_closure Red (pterm_app t u) (pterm_app t u')
+  | lab_abs_in : forall t t' L, (forall x, x \notin L -> lab_contextual_closure Red (t^x) (t'^x)) 
+      -> lab_contextual_closure Red (pterm_abs t) (pterm_abs t')
+  | lab_subst_left : forall t t' u L, lab_term u -> 
+	  	(forall x, x \notin L -> lab_contextual_closure Red (t^x) (t'^x)) -> 
+	        lab_contextual_closure Red  (t[u]) (t'[u])
+  | lab_subst_right : forall t u u', lab_body t -> lab_contextual_closure Red u u' -> 
+	  	lab_contextual_closure Red  (t[u]) (t[u']) 
+  | lab_subst'_left : forall t t' u L, term u -> SN lex u ->
+	  	(forall x, x \notin L -> lab_contextual_closure Red (t^x) (t'^x)) -> 
+	        lab_contextual_closure Red  (t[[u]]) (t'[[u]])
+  | lab_subst'_right : forall t u u', lab_body t -> SN lex u -> Red u u' -> 
+	  	lab_contextual_closure Red  (t[[u]]) (t[[u']]) 
+.
+
+
+(** Labelled lambda ex calculus. There is just one B rule that works
+both in the labelled and non-labelled calculus. *)
+
+(** Labelled equations *)
+
+Inductive lab_eqc  : pterm -> pterm -> Prop := 
+| lab_eqc_rf: forall u, lab_eqc u u
+| lab_eqc_rx1 : forall t u v, 
+                  lab_term u -> term v -> lab_eqc (t[u][[v]]) ((& t)[[v]][u]) 
+| lab_eqc_rx2 : forall t u v, 
+                  term u -> lab_term v -> lab_eqc (t[[u]][v]) ((& t)[v][[u]]) 
+| lab_eqc_rx3 : forall t u v, 
+                  term u -> term v -> lab_eqc (t[[u]][[v]]) ((& t)[[v]][[u]]).
+
+Lemma lab_eqc_sym : forall t u, lab_eqc t u -> lab_eqc u t.
+Proof.
+  intros t u Heqc.
+  destruct Heqc.
+  apply lab_eqc_rf.
+  replace ((t [u]) [[v]]) with (((& (& t)) [u]) [[v]]).
+  apply lab_eqc_rx2; assumption.
+  rewrite bswap_idemp; trivial.
+  replace ((t [[u]]) [v]) with (((& (& t)) [[u]]) [v]).
+  apply lab_eqc_rx1; assumption.
+  rewrite bswap_idemp; trivial.  
+  replace ((t [[u]]) [[v]]) with (((& (& t)) [[u]]) [[v]]).
+  apply lab_eqc_rx3; assumption.
+  rewrite bswap_idemp; trivial.
+Qed.  
+
+Lemma lab_eqc_trans : forall t u v, lab_eqc t u -> lab_eqc u v -> lab_eqc t v.
+Proof.
+  intros t u v Htu Huv.
+  destruct Huv.
+  assumption.
+  inversion Htu.
+  apply lab_eqc_rx1; assumption.
+  rewrite bswap_idemp; trivial.
+  apply lab_eqc_rf.
+  inversion Htu.
+  apply lab_eqc_rx2; assumption.
+  rewrite bswap_idemp; trivial.
+  apply lab_eqc_rf.
+  inversion Htu.
+  apply lab_eqc_rx3; assumption.
+  rewrite bswap_idemp; trivial.
+  apply lab_eqc_rf.
+Qed.  
+
+Instance lab_eqc_eq : Equivalence lab_eqc.
+Proof.
+ split; intros_all.
+ apply lab_eqc_rf.
+ apply lab_eqc_sym; trivial.
+ generalize H H0. apply lab_eqc_trans.
+Qed.
+
+Definition lab_eqC (t: pterm) (u : pterm) :=  trans_closure (lab_contextual_closure lab_eqc) t u . 
+Notation "t =~e u" := (lab_eqC t u) (at level 66).
+
+(** TBD:regularity and contextual lemmas are missing. *)
+
+(** Step 2 *)
+
+(** The extended reduction system. This system is used to propagate
+terminating labelled substitutions. *)
+
+Inductive lab_sys_x : pterm -> pterm -> Prop :=
+| lab_reg_rule_var : forall t, lab_term (pterm_bvar 0 [[t]]) -> lab_sys_x (pterm_bvar 0 [[t]]) t
+
+| lab_reg_rule_gc : forall t u, lab_term t -> lab_term (t[[u]]) -> lab_sys_x (t[[u]]) t
+
+| lab_reg_rule_app : forall t1 t2 u, lab_term (t1[[u]]) -> lab_term (t2[[u]]) ->
+  lab_sys_x ((pterm_app t1 t2)[[u]]) (pterm_app (t1[[u]]) (t2[[u]]))
+
+| lab_reg_rule_lamb : forall t u, lab_term ((pterm_abs t)[[u]]) -> 
+  lab_sys_x ((pterm_abs t)[[u]]) (pterm_abs ((& t)[[u]]))
+
+| lab_reg_rule_comp : forall t u v, lab_term ((t[u])[[v]]) -> ~ term u -> 
+  lab_sys_x (t[u][[v]]) (((& t)[[v]])[u[[v]]]).
+Notation "t ->_lab_x u" := (lab_sys_x t u) (at level 59, left associativity).
+
+Inductive lab_sys_lx: pterm -> pterm -> Prop :=
+| B_lx : forall t u, t ->_B u -> lab_sys_lx t u
+| sys_x_lx : forall t u, t ->_x u -> lab_sys_lx t u
+| sys_x_lab_lx : forall t u, t ->_lab_x u -> lab_sys_lx t u.
+
+Definition red_ctx_mod_lab_eqC (R: pterm -> pterm -> Prop) (t: pterm) (u : pterm) := 
+           exists t' u', (t =~e t')/\(contextual_closure R t' u')/\(u' =~e u).
+
+Definition lab_ex (t: pterm) (u : pterm) := 
+    exists t' u', (t =~e t')/\(lab_contextual_closure lab_sys_x t' u')/\(u' =~e u).
+
+Definition lab_lex (t: pterm) (u : pterm) := 
+    exists t' u', (t =~e t')/\(lab_contextual_closure lab_sys_lx t' u')/\(u' =~e u).
+
+Notation "t -->[ex] u" := (lab_ex t u) (at level 59, left associativity).
+Notation "t -->[lex] u" := (lab_lex t u) (at level 59, left associativity).
+
+Definition red_lab_regular (R : pterm -> pterm -> Prop) :=
+  forall t t',  R t t' -> lab_term t /\ lab_term t'.
+
+Definition red_lab_regular' (R : pterm -> pterm -> Prop) :=
+  forall t t',  R t t' -> (lab_term t <-> lab_term t').
+
+
+(** Unlabelled of S-terms *)
+Fixpoint U_lab (t : pterm) : pterm :=
+  match t with
+  | pterm_bvar i    => pterm_bvar i
+  | pterm_fvar x    => pterm_fvar x
+  | pterm_app t1 t2 => pterm_app (U_lab t1) (U_lab t2)
+  | pterm_abs t1    => pterm_abs (U_lab t1)
+  | pterm_sub t1 t2 => pterm_sub (U_lab t1) (U_lab t2)
+  | pterm_sub' t1 t2 => pterm_sub (U_lab t1) t2
+  end.
+
+(** Step 3 *)
+
+(** Step 4 *)
