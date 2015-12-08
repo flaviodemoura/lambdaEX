@@ -1,5 +1,5 @@
 (***************************************************************************
-* Formalization of lambda j						   *		
+* Formalization of ES calculi						   *
 *									   *
 * General rewriting definitions	for explicit substitutions		   * 
 *									   *
@@ -11,6 +11,7 @@ Require Import Metatheory.
 Require Import LambdaES_Defs.
 Require Import LambdaES_Infra.
 Require Import LambdaES_FV.
+Require Import List.
 
 (** Given a relation Red, constructs its contextual closure *)
 Inductive contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm -> Prop :=
@@ -170,24 +171,76 @@ Definition L_red_out (R : pterm -> pterm -> Prop) :=
   forall x u t t', Lterm u -> R t t' -> 
   R ([x~>u]t) ([x~>u]t').
 
+(** maybe realocate  begin *)
+(** Reduction on lists **)
 
-(* ********************************************************************** *)
-(** SN & NF **)
+Definition R_list (R : pterm -> pterm -> Prop) (l : list pterm) (l' : list pterm) := 
+exists t, exists t', exists l0, exists l1, l = (l0 ++ t :: l1) /\ l' = (l0 ++ t' :: l1) /\ R t t'.
 
-Inductive NF_ind (R : pterm -> pterm -> Prop): pterm -> Prop :=
- | NF_ind_app : forall x l, (forall u, In u l -> NF_ind R u) -> NF_ind R ((pterm_fvar x) // l)
- | NF_ind_abs : forall t L, (forall x, x \notin L -> NF_ind R (t ^ x)) ->  NF_ind R (pterm_abs t).
+Lemma R_list_h: forall (R : pterm -> pterm -> Prop) a b lt, 
+                R a b -> R_list R (a :: lt) (b :: lt).   
+Proof.
+ intros. unfold R_list. exists a. exists b. exists (nil (A := pterm)). exists lt.
+ simpl. split; trivial; split; trivial.
+Qed.
 
-Inductive SN_ind (n : nat) (R : pterm -> pterm -> Prop) (t : pterm) : Prop :=
- | SN_intro : (forall t', R t t' -> exists k, k < n /\ SN_ind k R t') -> SN_ind n R t.
+Lemma R_list_t: forall (R : pterm -> pterm -> Prop) a lt lt', 
+                (R_list R lt lt') -> R_list R (a :: lt) (a :: lt').
+Proof.
+ unfold R_list. intros.
+ case H; clear H. intros b H.
+ case H; clear H. intros b' H.
+ case H; clear H. intros l H.
+ case H; clear H. intros l' H.
+ destruct H. destruct H0. 
+ rewrite H. rewrite H0.
+ exists b. exists b'. 
+ exists (a :: l). exists l'. simpl.
+ split; trivial. split; trivial.
+Qed.
 
-Definition SN (R : pterm -> pterm -> Prop) (t : pterm) := exists n, SN_ind n R t.
-Definition NF (R : pterm -> pterm -> Prop) (t : pterm) := forall t', ~ R t t'.
+Lemma term_mult_app : forall t lu, term (t // lu) <-> term t /\ (term %% lu).
+Proof.
+ intros t lu. induction lu; simpl; split; 
+ intro H;  try apply H; try split; trivial.
+ apply term_distribute_over_application in H. 
+ apply IHlu. apply H.
+ apply term_distribute_over_application in H.
+ split. apply H. apply IHlu. apply H.
+ apply term_distribute_over_application. split.
+ apply IHlu. split; apply H. apply H.
+Qed.
+
+Lemma Lterm_mult_app : forall t lu, Lterm (t // lu) <-> Lterm t /\ (Lterm %% lu).
+Proof.
+ intros t lu. induction lu; simpl; split; 
+ intro H;  try apply H; try split; trivial.
+ inversion H. apply IHlu; trivial.
+ inversion H. split; trivial. apply IHlu; trivial.
+ destruct H. destruct H0. apply Lterm_app; trivial.
+ apply IHlu; split; trivial.
+Qed.
 
 
-
-
-
+Lemma ctx_red_t_mult_app : forall R t lu lu', term t -> term %% lu -> R_list (contextual_closure R) lu lu' -> (contextual_closure R) (t // lu) (t // lu').
+Proof.
+ intros R t lu lu' Tt Tlu H. unfold R_list in H. 
+ case H; clear H; intros t0 H.
+ case H; clear H; intros t1 H.
+ case H; clear H; intros l0 H.
+ case H; clear H; intros l1 H.
+ destruct H. destruct H0. 
+ rewrite H. rewrite H0. rewrite H in Tlu. 
+ clear H H0. induction l0; simpl. destruct l1; simpl. 
+ apply app_right; trivial.
+ apply app_right; trivial. 
+ simpl in Tlu. rewrite term_distribute_over_application.
+ rewrite term_mult_app. destruct Tlu. destruct H0.
+ split; trivial. split; trivial.
+ simpl in Tlu. destruct Tlu. 
+ apply app_left; trivial.
+ apply IHl0; trivial. 
+Qed.
 
 
 

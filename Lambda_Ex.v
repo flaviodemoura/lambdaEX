@@ -987,3 +987,7 @@ Proof. intros; case H; clear H; intros n H; exists n; apply lex_SN_ind_swap; tri
 
 
 
+
+
+
+

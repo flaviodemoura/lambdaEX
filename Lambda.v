@@ -9,6 +9,7 @@
 Set Implicit Arguments.
 Require Import Metatheory LambdaES_Defs LambdaES_Infra LambdaES_FV.
 Require Import Rewriting_Defs Rewriting_Lib.
+Require Import List.
 
 (** The beta rule of the lambda calculus. **)
 Inductive rule_beta : pterm -> pterm -> Prop :=

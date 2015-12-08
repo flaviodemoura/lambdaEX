@@ -35,6 +35,8 @@ Inductive p_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm -
 
 (** Step 1 *)
 
+
+
 (** Grammar of labelled pre-terms. Labelled terms extend the ordinary
  terms with a new constructor for marked explicit substitutions. *)
 
@@ -81,6 +83,25 @@ Inductive lab_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm
 	  	lab_contextual_closure Red  (t[[u]]) (t[[u']]) 
 .
 
+(* ====================================================================== *)
+(** ** Alternative definition for local closure *)
+
+(* ********************************************************************** *)
+(** Local closure for marked terms. *)
+
+Fixpoint lc_at' (k:nat) (t:pterm) {struct t} : Prop :=
+  match t with 
+  | pterm_bvar i    => i < k
+  | pterm_fvar x    => True
+  | pterm_app t1 t2 => lc_at' k t1 /\ lc_at' k t2
+  | pterm_abs t1    => lc_at' (S k) t1
+  | pterm_sub t1 t2 => (lc_at' (S k) t1) /\ lc_at' k t2
+  | pterm_sub' t1 t2 => (lc_at k t2) /\ (SN lex t2) /\ (lc_at' (S k) t1)
+  end.
+
+Definition term'' t := lc_at' 0 t.
+
+Definition body'' t := lc_at' 1 t.
 
 (** Labelled lambda ex calculus. There is just one B rule that works
 both in the labelled and non-labelled calculus. *)
@@ -199,6 +220,32 @@ Fixpoint U_lab (t : pterm) : pterm :=
   | pterm_sub' t1 t2 => pterm_sub (U_lab t1) t2
   end.
 
+
+
+
+(* ********************************************************************** *)
+(** pterm lists  properties *)
+
+Fixpoint cr_lc_at_list (n : nat) (l : list pterm) {struct l} : Prop :=
+ match l with
+ | nil => True
+ | t::lu =>  lc_at' n t /\ (cr_lc_at_list (S n) lu) 
+ end.
+
+Lemma lc_at_mult_sub : forall n t lu, lc_at' n (t//[lu]) <-> (lc_at' (n + length lu) t /\ cr_lc_at_list n lu).
+Proof.
+ intros. generalize n; clear n. induction lu; simpl. 
+ split. intro. assert (Q : n + 0 = n); try omega. rewrite Q. split; trivial.
+ intro. assert (Q : n + 0 = n); try omega. rewrite Q in H. apply H.
+ intro n. replace (n + S (length lu)) with ((S n) + length lu). split.
+ intro H. destruct H. split. 
+ apply IHlu; trivial. split; trivial. apply IHlu; trivial.
+ intro H. destruct H. destruct H0. split; trivial. apply IHlu. split; trivial.
+ omega.
+Qed.
+
+
 (** Step 3 *)
 
 (** Step 4 *)
+

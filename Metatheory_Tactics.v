@@ -1,8 +1,9 @@
 (***************************************************************************
-* Formalization of lambda j						   *
+* Formalization of ES calculi						   *
 * 									   *
 * Bundles of Modules for Developments in Programming Language Metatheory   *
 * Arthur Chargu\u00e9raud, July 2007 	                                   *
+* Flávio L. C. de Moura, 2015                                              *          
 ***************************************************************************)
 
 Set Implicit Arguments.

@@ -1,9 +1,10 @@
 (***************************************************************************
-* Formalization of lambda j						   *		
+* Formalization of ES calculi						   *		
 *									   *
 * Tactics specific for terms with explicit substitutions		   *
 *									   *
-* St\u00e9phane Zimmermann							   *
+* St\u00e9phane Zimmermann                                                 *  
+* Flávio L. C. de Moura, 2015						   *
 ***************************************************************************)
 
 Require Import LambdaES_Defs.

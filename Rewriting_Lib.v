@@ -148,26 +148,6 @@ Proof.
  intros R t t' lu Tlu H. induction lu; simpl in *|-*; trivial.
  destruct Tlu. apply app_left; trivial.
  apply IHlu; trivial.
-Qed. 
-
-Lemma ctx_red_t_mult_app : forall R t lu lu', term t -> term %% lu -> R_list (contextual_closure R) lu lu' -> (contextual_closure R) (t // lu) (t // lu').
-Proof.
- intros R t lu lu' Tt Tlu H. unfold R_list in H. 
- case H; clear H; intros t0 H.
- case H; clear H; intros t1 H.
- case H; clear H; intros l0 H.
- case H; clear H; intros l1 H.
- destruct H. destruct H0. 
- rewrite H. rewrite H0. rewrite H in Tlu. 
- clear H H0. induction l0; simpl. destruct l1; simpl. 
- apply app_right; trivial.
- apply app_right; trivial. 
- simpl in Tlu. rewrite term_distribute_over_application.
- rewrite term_mult_app. destruct Tlu. destruct H0.
- split; trivial. split; trivial.
- simpl in Tlu. destruct Tlu. 
- apply app_left; trivial.
- apply IHl0; trivial. 
 Qed.
 
 

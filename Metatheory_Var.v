@@ -1,9 +1,10 @@
 (***************************************************************************
-* Formalization of lambda j						   *
+* Formalization of ES calculi						   *
 *									   *
 * Generic Variables for Programming Language Metatheory                    *
 * Brian Aydemir & Arthur Chargu\u00e9raud, July 2007, 	                   *
-* Fabien Renaud, 2011							   *
+* Fabien Renaud, 2011	                                                   *
+* Flávio L. C. de Moura, 2015                     			   *
 ***************************************************************************)
 
 Set Implicit Arguments.

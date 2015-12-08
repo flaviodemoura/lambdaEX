@@ -1,9 +1,10 @@
 (***************************************************************************
-* Formalization of lambda j						   *		
+* Formalization of ES calculi						   *		
 *									   *
 * Properties of free variables 		 				   *
 *									   *
 * Fabien Renaud, 2011							   *
+* Flávio L. C. de Moura, 2015                                              * 
 ***************************************************************************)
 
 Set Implicit Arguments.
@@ -11,31 +12,47 @@ Require Import  Metatheory LambdaES_Defs.
 
 Lemma fv_open_ : forall t k x y, x<>y -> (x \in fv ({k~>pterm_fvar y}t )  <-> x \in fv t).
 Proof.
-  intro; induction t. intros k x y H.  simpls.
-    case_nat.  simpls. split. intro.
-    apply in_singleton in H0. contradiction.
-    intro. apply in_empty in H0. contradiction.
-    apply notin_empty in H0. contradiction H0.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 k x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 k x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
-    apply (IHt (S k) x y) ; assumption.
-    apply (IHt (S k) x y) ; assumption.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 (S k) x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 (S k) x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 (S k) x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
-    rewrite in_union in H0. destruct H0 ;  rewrite in_union.
-      left.  apply (IHt1 (S k) x y) ; assumption.
-      right.  apply (IHt2 k x y) ; assumption.
+  intro t; induction t. intros k x y H.  simpls.
+  case_nat. simpls. split. intro H0.
+  apply in_singleton in H0. contradiction.
+  intro H0. apply in_empty in H0. contradiction.
+  simpls. split. intro H0; assumption. intro H0; assumption.
+  intros k x y H. simpls.
+  split. intro H0; assumption. intro H0; assumption.
+  intros k x y H. simpls. rewrite in_union. rewrite in_union.
+  split. intro H0. destruct H0. left.
+  generalize H0. apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
+  intro H0. destruct H0. left.
+  generalize H0. apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
+  simpls. intros k x y.
+  apply (IHt (S k) x y) ; assumption.
+  simpls. intros k x y H.
+  rewrite in_union. rewrite in_union.
+  split. intro H0. destruct H0. left.
+  generalize H0. apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
+  intro H0. destruct H0.
+  left. generalize H0.
+  apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
+  simpls. intros k x y.
+  rewrite in_union. rewrite in_union. intro H.
+  split. intro H0. destruct H0.
+  left. generalize H0.
+  apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
+  intro H0. destruct H0.
+  left. generalize H0.
+  apply IHt1; assumption.
+  right. generalize H0.
+  apply IHt2; assumption.
 Qed.
 
 

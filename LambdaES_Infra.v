@@ -1,17 +1,17 @@
 (***************************************************************************
-* Formalization of lambda j						   *		
+* Formalization of ES calculi						   *
 *									   *
 * Infrastructure for explicit substitutions, not specific to a calculus    *
 *									   *
 * Arthur Chargu\u00e9raud, 2007						   *
 * Fabien Renaud & St\u00e9phane Zimmerman, 2011				   *
+* Flávio L. C. de Moura, 2015                                              *
 ***************************************************************************)
 
 
 Set Implicit Arguments.
 Require Import  Metatheory LambdaES_Defs LambdaES_Tac LambdaES_FV.
-Require Import Arith.
-Require Export List.
+Require Import Arith List. 
 
 (* ********************************************************************** *)
 (** * Instanciation of tactics *)
@@ -33,7 +33,7 @@ Ltac pick_fresh Y :=
 
 (* Tactic [apply_fresh T as y] takes a lemma T of the form 
     [forall L ..., (forall x, x \notin L, P x) -> ... -> Q.]
-    instanciate L to be the set of variables occuring in the
+    instanciate L to be the set of variables occurring in the
     context (by [gather_vars]), then introduces for the premise
     with the cofinite quantification the name x as "y" (the second
     parameter of the tactic), and the proof that x is not in L. *)
@@ -46,15 +46,56 @@ Tactic Notation "apply_fresh" constr(T) :=
 Tactic Notation "apply_fresh" "*" constr(T) :=
   apply_fresh T; auto_star.
 
+(** ES terms are expressions without dangling deBruijn indexes. *)
+Inductive term : pterm -> Prop :=
+  | term_var : forall x,
+      term (pterm_fvar x)
+  | term_app : forall t1 t2,
+      term t1 -> 
+      term t2 -> 
+      term (pterm_app t1 t2)
+  | term_abs : forall L t1,
+      (forall x, x \notin L -> term (t1 ^ x)) ->
+      term (pterm_abs t1)
+  | term_sub : forall L t1 t2,
+     (forall x, x \notin L -> term (t1 ^ x)) ->
+      term t2 -> 
+      term (pterm_sub t1 t2).
+
+Lemma term_size_non_null : forall t, term t -> pterm_size t > 0.
+Proof.
+  intros t Ht. destruct t.
+  simpl; auto.  
+  simpl; auto.  
+  simpl. omega.
+  simpl. omega.
+  simpl. omega.
+  simpl. omega.
+Qed.  
+
+(** Pure lambda terms. *)
+Inductive Lterm : pterm -> Prop :=
+  | Lterm_var : forall x,
+      Lterm (pterm_fvar x)
+  | Lterm_app : forall t1 t2,
+      Lterm t1 -> 
+      Lterm t2 -> 
+      Lterm (pterm_app t1 t2)
+  | Lterm_abs : forall L t1,
+      (forall x, x \notin L -> Lterm (t1 ^ x)) ->
+      Lterm (pterm_abs t1).
+
+(** Body *) 
+Definition body t := exists L, forall x, x \notin L -> term (t ^ x).
+
+(** Body for pure lambda terms *) 
+Definition Lbody t := exists L, forall x, x \notin L -> Lterm (t ^ x).
 
 Hint Constructors term.
 Hint Constructors Lterm.
 
-
 (******************************************************)
-(** * Lemmas *)
-
-(** ** About open *)
+(** Lemmas. *)
 
 (* Open_var with fresh names is an injective operation *)
 Lemma open_var_inj : forall (x:var) t1 t2, x \notin (fv t1) -> 
@@ -72,7 +113,6 @@ Proof.
   rewrite IHt1_2 with (n:=k) (t2:=t2_2) ; auto.
 Qed.
 
-(** Substitution on indices is the identity on locally closed terms. *)
 Lemma open_rec_term_core :forall t j v i u, i <> j -> 
 	{j ~> v}t = {i ~> u}({j ~> v}t) -> 
 	t = {i ~> u}t.
@@ -87,9 +127,6 @@ Proof.
   induction 1; intros; simpl; fequals*; unfolds open ;
   pick_fresh x; apply* (@open_rec_term_core t1 0 (pterm_fvar x)).
 Qed.
-
-
-(** ** About the implicit substitution, and open *)
 
 (** Substitution for a fresh name is identity. *)
 Lemma subst_fresh : forall x t u,   x \notin fv t ->  [x ~> u] t = t.
@@ -118,8 +155,6 @@ Proof.
   introv Neq Wu. rewrite* subst_open. simpl. case_var*.
 Qed.
 
-
-
 (** Open up t with a term u is the same as open it with a fresh free variable
    x and then substitute u for x. *)
 Lemma subst_intro : forall x t u, 
@@ -133,8 +168,6 @@ Proof.
   case_var*.
 Qed.
 
-
-
 (** Terms are stable by substitution *)
 Lemma subst_term : forall t z u,
   term u -> term t -> term ([z ~> u]t).
@@ -146,17 +179,11 @@ Proof.
 Qed.
 Hint Resolve subst_term.
 
-
-(** ** About body *)
-
-
 (** Every term is a body *)
 Lemma term_is_a_body : forall t, term t -> body t.
 Proof.
   intros. unfold body. exists {}. intros. unfold open. rewrite <- open_rec_term. auto. auto.
 Qed.
-
-
 
 (**  Open a body with a term gives a term *)
 Lemma body_open_term : forall t u, body t -> term u -> term (t ^^ u).
@@ -165,12 +192,9 @@ Proof.
 Qed.
 Hint Resolve body_open_term.
 
-
 (**  Open a term with a term gives a term *)
 Lemma term_open_term : forall t u, term t -> term u -> term (t ^^ u).
 Proof. intros.  apply* body_open_term. apply* term_is_a_body. Qed.
-
-
 
 (** Conversion from locally closed abstractions and bodies *)
 Lemma term_abs_to_body : forall t1, term (pterm_abs t1) -> body t1.
@@ -192,7 +216,6 @@ Lemma subs_to_body : forall t u,  term (pterm_sub t u) -> (body t /\ term u).
 Proof. intros. inversion* H. split; trivial. 
        unfold body. exists L. intros x Fr. apply H2; trivial. Qed.
 
-
 Lemma term_to_subs : forall t u, term t -> term u -> term (pterm_sub t u).
 Proof. intros. apply_fresh term_sub. apply term_open_term.  assumption. auto. auto. Qed.
 
@@ -201,14 +224,11 @@ Proof. intros. inversion* H. Qed.
 
 Lemma term_app_to_term_r : forall t1 t2, term (pterm_app t1 t2) -> term t2.
 Proof. intros. inversion* H. Qed.
- 
 
 Lemma fvar_body : forall x, body (pterm_fvar x).
 Proof. intro. unfold body. exists {}. intros. unfold open. simpl. apply term_var. Qed.
 
-
-Hint Resolve term_abs_to_body body_to_term_abs  term_sub_to_body body_to_subs fvar_body.
-  
+Hint Resolve term_abs_to_body body_to_term_abs term_sub_to_body body_to_subs fvar_body.  
       
 Lemma body_distribute_over_application : forall t u, body (pterm_app t u) <-> body t /\ body u.
 Proof.
@@ -253,9 +273,6 @@ Proof.
   intros. apply* term_open_term.
 Qed.
 
-
-(** ** About close and open *)
-
 Lemma close_var_rec_open : forall t x y z i j , i <> j -> x <> y -> y \notin fv t ->
   {i ~> pterm_fvar y}({j ~> pterm_fvar z} (close_rec j x t)) = {j ~> pterm_fvar z}(close_rec j x ({i ~> pterm_fvar y}t)).
 Proof.
@@ -263,8 +280,6 @@ Proof.
   do 2 (case_nat; simpl); try solve [ case_var* | case_nat* ]. 
   case_var*. simpl. case_nat*.
 Qed. 
-
-
          
 Lemma open_close_var : forall x t,  term t -> t = (close t x) ^ x.
 Proof.
@@ -281,7 +296,6 @@ Proof.
   unfolds open. rewrite* close_var_rec_open.  VSD.fsetdec.
 Qed. 
 
-
 Lemma close_var_body : forall x t,  term t -> body (close t x).
 Proof.
   introv W. exists {{x}}. intros y Fr.
@@ -295,14 +309,12 @@ Proof.
   apply_fresh* term_sub. unfolds open. rewrite* close_var_rec_open.  VSD.fsetdec.
 Qed.
 
-
 Lemma close_fresh : forall t x k, x \notin fv t -> close_rec k x t = t.
 Proof. 
   intros t x k x_notin_t. unfold close. gen k. 
   induction t ; intro k ; simpls* ; try (fequals ; eauto).
     case_var*.
 Qed.
-
 
 Lemma subst_close : forall t x y u, 
     x \notin fv u -> 
@@ -319,7 +331,6 @@ Proof.
       case_var*.
 Qed.
 
-
 Lemma subst_as_close_open : forall t x u, term t -> [x ~> u] t = (close t x) ^^ u.
 Proof.
   intros t x u term_t. rewrite subst_intro with (x:=x).
@@ -327,8 +338,7 @@ Proof.
   apply notin_fv_close.
 Qed.
 
-
-(** Auxiliary lemmas **)
+(** Auxiliary lemmas. *)
 
 Lemma term_distribute_over_application : forall t u, term (pterm_app t u) <-> term t /\ term u.
 Proof.
@@ -365,7 +375,6 @@ Proof.
   case_var*. apply_fresh Lterm_abs. rewrite* subst_open_var. apply Lterm_is_term; trivial.
 Qed.
 Hint Resolve subst_Lterm.
-   
 
 Lemma Lbody_open_term : forall t u, Lbody t -> Lterm u -> Lterm (t ^^ u).
 Proof.
@@ -373,7 +382,6 @@ Proof.
  intros y Fr. rewrite* (@subst_intro y).
 Qed.
 Hint Resolve body_open_term.
-
 
 Lemma not_body_Sn: forall n, ~(body (pterm_bvar (S n))).
 Proof.
@@ -411,17 +419,20 @@ Proof.
   inversion* H0.
 Qed.
 
+(*
 Lemma term_to_body: forall t x, x \notin fv t -> term (t^x) -> body t.
 Proof.
+  induction t.
   intros.
-  unfold body.
-  exists (fv t).
+  unfold body.  
+  simpl in H.
+  exists {}.
   intros.
-  inversion* H0.
-  rewrite <- H2 in H0.
-  inversion H2.
-Qed.
-
+  inversion H0.
+  inversion H3.
+  unfold open.
+ *) 
+  
 (* ********************************************************************** *)
 (** Induction Principles Part 1*)
 
@@ -517,6 +528,36 @@ Proof.
   apply Hsub'.
 Qed.
 
+Fixpoint lc_at (k:nat) (t:pterm) {struct t} : Prop :=
+  match t with 
+  | pterm_bvar i    => i < k
+  | pterm_fvar x    => True
+  | pterm_app t1 t2 => lc_at k t1 /\ lc_at k t2
+  | pterm_abs t1    => lc_at (S k) t1
+  | pterm_sub t1 t2 => (lc_at (S k) t1) /\ lc_at k t2
+  | pterm_sub' t1 t2 => False
+  end.
+
+Definition term' t := lc_at 0 t.
+
+Definition body' t := lc_at 1 t.
+
+(* ********************************************************************** *)
+(** Local closure for Lambda terms, recursively defined *)
+
+Fixpoint Llc_at (k:nat) (t:pterm) {struct t} : Prop :=
+  match t with 
+  | pterm_bvar i    => i < k
+  | pterm_fvar x    => True
+  | pterm_app t1 t2 => Llc_at k t1 /\ Llc_at k t2
+  | pterm_abs t1    => Llc_at (S k) t1
+  | pterm_sub t1 t2 => False
+  | pterm_sub' t1 t2 => False
+  end.
+
+Definition Lterm' t := Llc_at 0 t.
+
+Definition Lbody' t := Llc_at 1 t.
   
 (* ********************************************************************** *)
 (** Equivalence of [term and [term'] *)
@@ -732,7 +773,6 @@ Lemma Llc_at_weaken : forall k t,
   Lterm' t -> Llc_at k t.
 Proof. introv H. apply~ (@Llc_at_weaken_ind 0). omega. Qed.
 
-
 (* ********************************************************************** *)
 (** pterm lists *)
 
@@ -760,25 +800,6 @@ Fixpoint P_list (P : pterm -> Prop) (l : list pterm) {struct l} : Prop :=
 
 Notation "P %% lu" := (P_list P lu) (at level 66).
 
-Fixpoint cr_lc_at_list (n : nat) (l : list pterm) {struct l} : Prop :=
- match l with
- | nil => True
- | t::lu =>  lc_at n t /\ (cr_lc_at_list (S n) lu) 
- end.
-
-Lemma lc_at_mult_sub : forall n t lu, 
-                       lc_at n (t//[lu]) <-> (lc_at (n + length lu) t /\ cr_lc_at_list n lu).
-Proof.
- intros. generalize n; clear n. induction lu; simpl. 
- split. intro. assert (Q : n + 0 = n); try omega. rewrite Q. split; trivial.
- intro. assert (Q : n + 0 = n); try omega. rewrite Q in H. apply H.
- intro n. replace (n + S (length lu)) with ((S n) + length lu). split.
- intro H. destruct H. split. 
- apply IHlu; trivial. split; trivial. apply IHlu; trivial.
- intro H. destruct H. destruct H0. split; trivial. apply IHlu. split; trivial.
- omega.
-Qed.
-
 Lemma P_list_eq : forall (P : pterm -> Prop) l, (forall u, In u l -> P u) <-> (P %% l).
 Proof.
  intros P l. induction l; simpl; split; intros; trivial.
@@ -788,29 +809,18 @@ Proof.
  apply IHl; trivial.
 Qed.
 
+(* ********************************************************************** *)
+(** SN & NF **)
 
-Lemma term_mult_app : forall t lu, term (t // lu) <-> term t /\ (term %% lu).
-Proof.
- intros t lu. induction lu; simpl; split; 
- intro H;  try apply H; try split; trivial.
- apply term_distribute_over_application in H. 
- apply IHlu. apply H.
- apply term_distribute_over_application in H.
- split. apply H. apply IHlu. apply H.
- apply term_distribute_over_application. split.
- apply IHlu. split; apply H. apply H.
-Qed.
+Inductive NF_ind (R : pterm -> pterm -> Prop): pterm -> Prop :=
+ | NF_ind_app : forall x l, (forall u, In u l -> NF_ind R u) -> NF_ind R ((pterm_fvar x) // l)
+ | NF_ind_abs : forall t L, (forall x, x \notin L -> NF_ind R (t ^ x)) ->  NF_ind R (pterm_abs t).
 
-Lemma Lterm_mult_app : forall t lu, Lterm (t // lu) <-> Lterm t /\ (Lterm %% lu).
-Proof.
- intros t lu. induction lu; simpl; split; 
- intro H;  try apply H; try split; trivial.
- inversion H. apply IHlu; trivial.
- inversion H. split; trivial. apply IHlu; trivial.
- destruct H. destruct H0. apply Lterm_app; trivial.
- apply IHlu; split; trivial.
-Qed.
+Inductive SN_ind (n : nat) (R : pterm -> pterm -> Prop) (t : pterm) : Prop :=
+ | SN_intro : (forall t', R t t' -> exists k, k < n /\ SN_ind k R t') -> SN_ind n R t.
 
+Definition SN (R : pterm -> pterm -> Prop) (t : pterm) := exists n, SN_ind n R t.
+Definition NF (R : pterm -> pterm -> Prop) (t : pterm) := forall t', ~ R t t'.
 
 Lemma mult_app_append : forall t1 t2 l, pterm_app t1 t2 // l = t1 // l ++ (t2 :: nil).
 Proof.
@@ -840,17 +850,17 @@ Proof.
  apply IHl1. split; apply H.
 Qed.
 
+Lemma eqdec_nil : forall A (l: list A), (l = nil) \/ (l <> nil).
+Proof.
+ intros A l. induction l.
+ left; trivial. right; discriminate.
+Qed.
+
 Lemma m_app_eq_app : forall t lu, lu <> nil -> 
 exists t', exists u', t // lu = pterm_app t' u'.
 Proof.
  intros. destruct lu. apply False_ind. apply H; trivial.
  simpl. exists (t // lu). exists p. trivial.
-Qed.
-
-Lemma eqdec_nil : forall A (l: list A), (l = nil) \/ (l <> nil).
-Proof.
- intros A l. induction l.
- left; trivial. right; discriminate.
 Qed.
 
 Lemma not_nil_append : forall A (l: list A), l <> nil -> 
@@ -1080,32 +1090,8 @@ Proof.
   rewrite <- app_assoc. rewrite <- app_assoc; simpl; trivial.
 Qed.  
 
-(** Reduction on lists **)
 
-Definition R_list (R : pterm -> pterm -> Prop) (l : list pterm) (l' : list pterm) := 
-exists t, exists t', exists l0, exists l1, l = (l0 ++ t :: l1) /\ l' = (l0 ++ t' :: l1) /\ R t t'.
-
-Lemma R_list_h: forall (R : pterm -> pterm -> Prop) a b lt, 
-                R a b -> R_list R (a :: lt) (b :: lt).   
-Proof.
- intros. unfold R_list. exists a. exists b. exists (nil (A := pterm)). exists lt.
- simpl. split; trivial; split; trivial.
-Qed.
-
-Lemma R_list_t: forall (R : pterm -> pterm -> Prop) a lt lt', 
-                (R_list R lt lt') -> R_list R (a :: lt) (a :: lt').
-Proof.
- unfold R_list. intros.
- case H; clear H. intros b H.
- case H; clear H. intros b' H.
- case H; clear H. intros l H.
- case H; clear H. intros l' H.
- destruct H. destruct H0. 
- rewrite H. rewrite H0.
- exists b. exists b'. 
- exists (a :: l). exists l'. simpl.
- split; trivial. split; trivial.
-Qed.
+(** maybe realocate  end *)
 
 
 (* ********************************************************************** *)
@@ -1266,7 +1252,6 @@ Proof.
      apply Lbody_to_Lbody' in B. unfold Lbody' in B. simpl in B.
      contradiction.
 Qed.
-
 
 Lemma term_size_induction2 :
  forall P : pterm -> Prop,
@@ -2364,3 +2349,4 @@ Proof.
  apply lc_at_weaken_ind with (k1 := n); 
  try omega; trivial.
 Qed.
+

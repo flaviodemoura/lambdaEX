@@ -1,9 +1,10 @@
 (***************************************************************************
-* Formalization of lambda j						   *		
+* Formalization of ES calculi						   *	
 *									   *
-* Tactics and lemmas about freshnes 					   *									   
+* Tactics and lemmas about freshnes 					   *	
 *									   *
-* Arthur Chargu\u00e9raud, 2007						   *
+* Arthur Chargu\u00e9raud, 2007                                            *
+* Flávio L. C. de Moura, 2015						   *
 ***************************************************************************)
 
 Set Implicit Arguments.
