@@ -1,0 +1,1 @@
+IE_Property.vo IE_Property.glob IE_Property.v.beautified: IE_Property.v ./Metatheory.vo ./LambdaES_Defs.vo ./LambdaES_Infra.vo ./LambdaES_FV.vo ./LambdaES_Tac.vo ./Rewriting_Defs.vo ./Rewriting_Lib.vo ./Equation_C.vo ./Lambda.vo ./Lambda_Ex.vo ./LambdaESLab_Defs.vo ./LambdaESLab_Lib.vo

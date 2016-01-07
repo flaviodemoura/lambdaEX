@@ -163,6 +163,7 @@ Qed.
 Definition lab_eqC (t: pterm) (u : pterm) :=  trans_closure (lab_contextual_closure lab_eqc) t u . 
 Notation "t =~e u" := (lab_eqC t u) (at level 66).
 
+
 (** TBD:regularity and contextual lemmas are missing. *)
 
 (** Step 2 *)
