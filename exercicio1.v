@@ -334,34 +334,110 @@ Proof.
   intro. inversion H.
 Qed.
 
+Lemma lema1: forall n x t, lc_at' (S n) t -> lc_at' n (open_rec n x t).
+Admitted.
+
+
 Lemma lc_at_open_abs: 
       forall t x, lc_at' 1 t  <-> lc_at' 0 (t^x).
 Proof.
-  intros. split.
+  split.
   generalize dependent x.
   generalize dependent t.
   induction t using pterm_size_induction.
   
   intros.
-  unfold open. simpl.
+  (*unfold open. simpl.
   case n in *.
-    simpl. constructor.
-    inversion H. inversion H1. 
+    simpl. constructor.*)
+  inversion H. simpl. constructor.
+  inversion H1.
   
-  simpl. intros. constructor.
+  simpl. intros; assumption.
   
+  simpl. intros.
+  apply lema1 with (x:=(pterm_fvar x)) in H0.
+  assumption.
+  
+  simpl. intros.
+  destruct H.
+  split. apply IHt1. assumption.
+  apply IHt2; assumption.
+  
+  simpl. intros.
+  destruct H0. split.
+  apply lema1 with (x:=(pterm_fvar x)) in H0.
+  assumption.
+  apply IHt1. assumption.
+  
+  intros.
+  case t2 in *.
+    simpl in H0.
+    destruct H0. destruct H0.
+    inversion H2. simpl.
+    split. split. unfold SN.
+    exists 0. constructor.
+    intros.
+    SearchAbout lex.
+
+Lemma lema2: forall x t, (pterm_fvar x -->lex t) -> False.
+
+
+    destruct H3. destruct H3. destruct H3.
+    destruct H5. inversion H5.
+    (*
+    VERIFICAR CONTRADICAO EM H3, POIS UMA VARIAVEL NAO SE REDUZ.
+    *)
+    
+    
+  Admitted.
+Lemma lc_at_open_abs_n: 
+      forall t x n, lc_at' (S n) t  <-> lc_at' n (t^x).
+Proof.
+  split. 
+  generalize dependent n.
+  generalize dependent x.
+  generalize dependent t.
+  induction t.
+  simpl. intros. case n in *. simpl. constructor.
+  simpl.
+  inversion H.
+  subst. inversion H.
+
+
   Focus 2.
-  simpl. intros. destruct H.
-  split.
+  intros. destruct H.
+  simpl. split.
   apply IHt1. assumption.
   apply IHt2. assumption.
   
   Focus 2. simpl. intros.
-  destruct H0. split. 
+  destruct H0. split.
   Focus 2. apply IHt1. assumption.
+  simpl in IHt1. unfold open.
   SearchAbout open.
 (*PAREI AQUI*)
 Admitted.  
+
+Lemma lc_at_open_lab_term_open: forall t x, 
+      lc_at' 0 (t^x) -> lab_term (t^x).
+Proof.
+  induction t.
+  intros. unfold open.
+  simpl. case n in *. constructor.
+  intros. simpl in H. inversion H.
+  
+  unfold open. simpl. constructor.
+  
+  unfold open. simpl. intros.
+  destruct H. constructor.
+  apply IHt1. assumption.
+  apply IHt2. assumption.
+  
+  unfold open. simpl. intros.
+  apply lab_term_abs with (fv t).
+  intros. rewrite lc_at_open_abs with (x:=x0) in H.
+  Admitted.
 
 Lemma lab_term_to_lc_at': forall t i, lab_term t -> lc_at' i t.
 Proof.
@@ -455,9 +531,42 @@ Proof.
       apply H5. assumption.
 Qed.
 
-Lemma lc_at_open_lab_term_open: forall t x, 
-      lc_at' 0 (t^x) -> lab_term (t^x).
-Admitted.
+Lemma term_lc_at: forall t, term t -> lc_at' 0 t.
+Proof.
+  induction t.
+  intro. inversion H.
+  
+  intro. constructor.
+  
+  intro. simpl.
+  inversion H. split.
+  apply IHt1; assumption.
+  apply IHt2; assumption.
+  
+  intro. simpl.
+  inversion H. subst.
+  pick_fresh x.
+  apply notin_union in Fr. destruct Fr.
+  assert (term (t^x)). apply H1. assumption.
+  apply term_lab_term in H3.
+  apply lab_term_to_lc_at' with (i:=0) in H3.
+  rewrite <- lc_at_open_abs in H3. assumption.
+  
+  intro. simpl.
+  inversion H. subst.
+  pick_fresh x.
+  apply notin_union in Fr. destruct Fr.
+  apply notin_union in H0. destruct H0.
+  assert (term (t1^x)). apply H2. assumption.
+  apply term_lab_term in H5.
+  apply lab_term_to_lc_at' with (i:=0) in H5.
+  rewrite <- lc_at_open_abs in H5.
+  split. assumption.
+  apply IHt2. assumption.
+  
+  intro.
+  inversion H.
+Qed.
 
 Lemma lab_term_equiv_lc_at': forall t, lc_at' 0 t <-> lab_term t.
 Proof.
@@ -482,7 +591,8 @@ Proof.
   apply lc_at_open_abs.
   assert (lc_at' 0 (t^x)).
   apply H1. assumption.
-  apply lc_at_open_lab_term_open. assumption.  
+  apply lc_at_open_lab_term_open. assumption.
+  
   pick_fresh x.
   inversion H.
   apply lab_term_sub with (fv t1 \u fv t2).
@@ -505,9 +615,13 @@ Proof.
   case t2 in *.
     destruct H2. inversion H4.
     constructor.
-    destruct H2.
+    assert (lab_term (pterm_app t2_1 t2_2)).
+    apply IHt2. apply H2. simpl in *.
+    inversion H4. subst.
+    
 Admitted.
 (*PAREI AQUI*)
+
 Definition term'' t := lc_at' 0 t.
 
 Definition body'' t := lc_at' 1 t.
