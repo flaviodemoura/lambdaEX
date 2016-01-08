@@ -1,1 +1,0 @@
-LambdaESLab_Lib.vo LambdaESLab_Lib.glob LambdaESLab_Lib.v.beautified: LambdaESLab_Lib.v ./Metatheory.vo ./LambdaES_Defs.vo ./LambdaES_Infra.vo ./LambdaES_FV.vo ./Rewriting_Defs.vo ./Rewriting_Lib.vo ./Equation_C.vo ./Lambda.vo ./Lambda_Ex.vo ./LambdaESLab_Defs.vo ./Basic_Prop_lex.vo
