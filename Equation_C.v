@@ -13,8 +13,7 @@ Proof.
  intro H1. apply H. apply H0; trivial.
 Qed.
 
-(** =e definition *)
-
+(** =e definition: The equation c defines permutation of independent substitutions, which corresponds to forbid dangling deBruijn indexes in both u and v, i.e. u and v are terms.  *)
 Inductive eqc : pterm -> pterm -> Prop := 
   | eqc_rf: forall u, eqc u u  
   | eqc_rx: forall t u v, 
