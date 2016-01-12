@@ -76,10 +76,10 @@ Inductive lab_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> pterm
 	        lab_contextual_closure Red  (t[u]) (t'[u])
   | lab_subst_right : forall t u u', lab_body t -> lab_contextual_closure Red u u' -> 
 	  	lab_contextual_closure Red  (t[u]) (t[u']) 
-  | lab_subst'_left : forall t t' u L, term u -> SN lex u ->
+  | lab_subst'_left : forall t t' u L, term u -> 
 	  	(forall x, x \notin L -> lab_contextual_closure Red (t^x) (t'^x)) -> 
 	        lab_contextual_closure Red  (t[[u]]) (t'[[u]])
-  | lab_subst'_right : forall t u u', lab_body t -> SN lex u -> Red u u' -> 
+  | lab_subst'_right : forall t u u', lab_body t -> Red u u' -> 
 	  	lab_contextual_closure Red  (t[[u]]) (t[[u']]) 
 .
 
@@ -163,7 +163,7 @@ Qed.
 Definition lab_eqC (t: pterm) (u : pterm) :=  trans_closure (lab_contextual_closure lab_eqc) t u . 
 Notation "t =~e u" := (lab_eqC t u) (at level 66).
 
-(** =~e as equivalence relation *)
+(** =~e is an equivalence relation *)
 
 Lemma lab_eqC_rf : forall t, t =~e t.
 Proof.
@@ -172,7 +172,7 @@ Proof.
  apply lab_redex. reflexivity.
 Qed.
 
-Lemma lab_eqc_preserves_SN_lex: forall t t', SN lex t -> lab_eqc t t' -> SN lex t'.
+(*Lemma lab_eqc_preserves_SN_lex: forall t t', SN lex t -> lab_eqc t t' -> SN lex t'.
 Proof.
   intros t t' H0 H1.
   induction H1. assumption.
@@ -185,10 +185,8 @@ Proof.
   apply H3.  
   assert  (lab_eqc ((t [u]) [[v]]) (((& t) [[v]]) [u])).
   apply lab_eqc_rx1; assumption.
-  Admitted.
-  
-  
-  
+  Admitted.*)
+   
 Lemma lab_ctx_eqc_sym : forall t u, (lab_contextual_closure lab_eqc t u) -> lab_contextual_closure lab_eqc u t. 
 Proof.
   intros t u H. induction H.
@@ -200,21 +198,21 @@ Proof.
   apply lab_subst_right; trivial.
   apply lab_subst'_left with L; assumption.
   apply lab_subst'_right; trivial. 
-  apply lab_eqc_preserves_SN_lex with u; assumption.
   apply lab_eqc_sym; assumption.
 Qed.
-
 
 Lemma lab_eqC_sym : forall t u, t =~e u -> u =~e t.
 Proof.
   intros t u H.
-  unfold lab_eqC in*.
-  inversion H; subst.
+  unfold lab_eqC in *.
+  induction H.
   apply one_step_reduction.
+  apply lab_ctx_eqc_sym; assumption.
+  apply lab_ctx_eqc_sym in H.
+  apply (one_step_reduction (lab_contextual_closure lab_eqc)) in H.
+  apply transitive_closure_composition with u; assumption.
+Qed.  
 
-  
-  
-  
 Lemma lab_eqC_trans : forall t u v, t =~e u -> u =~e v -> t =~e v.
 Proof.
  intros t u v H H'.

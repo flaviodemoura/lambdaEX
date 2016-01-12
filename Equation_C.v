@@ -49,7 +49,7 @@ Qed.
 Definition eqC (t : pterm) (u : pterm) := trans_closure (p_contextual_closure eqc) t u.
 Notation "t =e u" := (eqC t u) (at level 66). 
 
-(** =e as equivalence relation *)
+(** =e is an equivalence relation *)
 
 Lemma eqC_rf : forall t, t =e t.
 Proof.
