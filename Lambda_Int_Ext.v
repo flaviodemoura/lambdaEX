@@ -46,7 +46,7 @@ Inductive ext_lab_contextual_closure (Red : pterm -> pterm -> Prop) : pterm -> p
 	                            ext_lab_contextual_closure Red  (t[u]) (t'[u])
 | lab_subst_right : forall t u u', lab_body t -> ext_lab_contextual_closure Red u u' -> 
 	  	                   ext_lab_contextual_closure Red  (t[u]) (t[u']) 
-| lab_subst'_ext : forall t t' u L, term u -> SN lex u ->
+| lab_subst'_ext : forall t t' u L, term u -> 
 	  	                    (forall x, x \notin L -> ext_lab_contextual_closure Red (t^x) (t'^x)) -> 
 	                            ext_lab_contextual_closure Red  (t[[u]]) (t'[[u]])
 .
@@ -62,10 +62,10 @@ Inductive lab_x_i: pterm -> pterm -> Prop :=
                 lab_x_i t t'. 
 
 Definition lab_x_i_eq (t: pterm) (u : pterm) := 
-    exists t' u', (t =ee t')/\(ext_lab_contextual_closure lab_x_i t' u')/\(u' =ee u).
+    exists t' u', (t =~e t')/\(ext_lab_contextual_closure lab_x_i t' u')/\(u' =~e u).
 
 Definition lab_x_e_eq (t: pterm) (u : pterm) := 
-    exists t' u', (t =ee t')/\((ext_lab_contextual_closure sys_Bx) t' u')/\(u' =ee u).
+    exists t' u', (t =~e t')/\((ext_lab_contextual_closure sys_Bx) t' u')/\(u' =~e u).
 
 Notation "t -->[lx_i] u" := (lab_x_i_eq t u) (at level 59, left associativity).
 Notation "t -->[lx_e] u" := (lab_x_e_eq t u) (at level 59, left associativity).

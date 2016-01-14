@@ -106,22 +106,29 @@ Definition body'' t := lc_at' 1 t.
 (** Labelled lambda ex calculus. There is just one B rule that works
 both in the labelled and non-labelled calculus. *)
 
-(** Labelled equations *)
+(** Labelled equations extend the equational system of the unlabelled calculus. *)
 
 Inductive lab_eqc  : pterm -> pterm -> Prop := 
-| lab_eqc_rf: forall u, lab_eqc u u
+| lab_eqc_eqc: forall t u, eqc t u -> lab_eqc t u
 | lab_eqc_rx1 : forall t u v, 
                   lab_term u -> term v -> lab_eqc (t[u][[v]]) ((& t)[[v]][u]) 
 | lab_eqc_rx2 : forall t u v, 
                   term u -> lab_term v -> lab_eqc (t[[u]][v]) ((& t)[v][[u]]) 
 | lab_eqc_rx3 : forall t u v, 
                   term u -> term v -> lab_eqc (t[[u]][[v]]) ((& t)[[v]][[u]]).
-                          
+
+Lemma lab_eqc_refl : forall u, lab_eqc u u.
+Proof.
+  intro u.
+  apply lab_eqc_eqc.
+  apply eqc_rf.
+Qed.
+  
 Lemma lab_eqc_sym : forall t u, lab_eqc t u -> lab_eqc u t.
 Proof.
   intros t u Heqc.
   destruct Heqc.
-  apply lab_eqc_rf.
+  apply lab_eqc_eqc. apply eqc_sym; assumption.
   replace ((t [u]) [[v]]) with (((& (& t)) [u]) [[v]]).
   apply lab_eqc_rx2; assumption.
   rewrite bswap_idemp; trivial.
@@ -132,32 +139,44 @@ Proof.
   apply lab_eqc_rx3; assumption.
   rewrite bswap_idemp; trivial.
 Qed.  
-
+  
 Lemma lab_eqc_trans : forall t u v, lab_eqc t u -> lab_eqc u v -> lab_eqc t v.
 Proof.
   intros t u v Htu Huv.
+  destruct Htu.
   destruct Huv.
-  assumption.
-  inversion Htu.
+  apply lab_eqc_eqc.
+  apply eqc_trans with t0; assumption.
+  assert (lab_eqc ((t0 [u])[[v]]) ((& t0 [[v]])[u])).
   apply lab_eqc_rx1; assumption.
-  rewrite bswap_idemp; trivial.
-  apply lab_eqc_rf.
-  inversion Htu.
+  inversion H; assumption.
+  inversion H.
   apply lab_eqc_rx2; assumption.
-  rewrite bswap_idemp; trivial.
-  apply lab_eqc_rf.
-  inversion Htu.
+  inversion H.
   apply lab_eqc_rx3; assumption.
-  rewrite bswap_idemp; trivial.
-  apply lab_eqc_rf.
+  inversion Huv.
+  inversion H1.
+  apply lab_eqc_rx1; assumption.
+  rewrite bswap_idemp.
+  apply lab_eqc_refl.
+  inversion Huv.
+  inversion H1.
+  apply lab_eqc_rx2; assumption.
+  rewrite bswap_idemp.
+  apply lab_eqc_refl.
+  inversion Huv.
+  inversion H1.
+  apply lab_eqc_rx3; assumption.
+  rewrite bswap_idemp.
+  apply lab_eqc_refl.
 Qed.  
-
+  
 Instance lab_eqc_eq : Equivalence lab_eqc.
 Proof.
  split; intros_all.
- apply lab_eqc_rf.
+ apply lab_eqc_refl.
  apply lab_eqc_sym; trivial.
- generalize H H0. apply lab_eqc_trans.
+ apply lab_eqc_trans with y; assumption.
 Qed.
 
 Definition lab_eqC (t: pterm) (u : pterm) :=  trans_closure (lab_contextual_closure lab_eqc) t u . 
@@ -171,21 +190,6 @@ Proof.
  apply one_step_reduction.
  apply lab_redex. reflexivity.
 Qed.
-
-(*Lemma lab_eqc_preserves_SN_lex: forall t t', SN lex t -> lab_eqc t t' -> SN lex t'.
-Proof.
-  intros t t' H0 H1.
-  induction H1. assumption.
-  inversion H0.
-  inversion H2.
-  unfold SN.
-  exists x.
-  apply SN_intro.
-  intros t' H4.
-  apply H3.  
-  assert  (lab_eqc ((t [u]) [[v]]) (((& t) [[v]]) [u])).
-  apply lab_eqc_rx1; assumption.
-  Admitted.*)
    
 Lemma lab_ctx_eqc_sym : forall t u, (lab_contextual_closure lab_eqc t u) -> lab_contextual_closure lab_eqc u t. 
 Proof.
@@ -227,9 +231,6 @@ Proof.
  apply lab_eqC_trans with y; trivial.
 Qed.
 
-Definition eqcc t t' := eqc t t' \/ lab_eqc t t'.
-Notation "t =ee t'" := (eqcc t t') (at level 66).
-
 
 
 (** TBD:regularity and contextual lemmas are missing. *)
@@ -266,7 +267,7 @@ Definition lab_ex (t: pterm) (u : pterm) :=
     exists t' u', (t =~e t')/\(lab_contextual_closure lab_sys_x t' u')/\(u' =~e u).
 
 Definition lab_lex (t: pterm) (u : pterm) := 
-    exists t' u', (t =ee t')/\(lab_contextual_closure lab_sys_lx t' u')/\(u' =ee u).
+    exists t' u', (t =~e t')/\(lab_contextual_closure lab_sys_lx t' u')/\(u' =~e u).
 
 Notation "t -->[ex] u" := (lab_ex t u) (at level 59, left associativity).
 Notation "t -->[lex] u" := (lab_lex t u) (at level 59, left associativity).
@@ -277,6 +278,85 @@ Definition red_lab_regular (R : pterm -> pterm -> Prop) :=
 Definition red_lab_regular' (R : pterm -> pterm -> Prop) :=
   forall t t',  R t t' -> (lab_term t <-> lab_term t').
 
+(** =~e Rewriting *)
+
+Instance rw_lab_eqC_red : forall R, Proper (lab_eqC ==> lab_eqC ==> iff) (red_ctx_mod_lab_eqC R).
+Proof.
+  intros_all.
+  split.
+  intro H1.
+  unfold red_ctx_mod_lab_eqC in *.
+  destruct H1. destruct H1. destruct H1. destruct H2.
+  exists x1. exists x2. split.
+  symmetry in H.
+  apply lab_eqC_trans with x; assumption.
+  split; trivial.
+  apply lab_eqC_trans with x0; assumption.
+  intro H1.
+  unfold red_ctx_mod_lab_eqC in *.
+  destruct H1. destruct H1. destruct H1. destruct H2.
+  exists x1. exists x2. split. 
+  apply lab_eqC_trans with y; assumption.
+  split; trivial.
+  symmetry in H0.
+  apply lab_eqC_trans with y0; assumption.
+Qed.  
+
+Instance lab_rw_eqC_trs : forall R, Proper (lab_eqC ==> lab_eqC ==> iff) (trans_closure (red_ctx_mod_lab_eqC R)).
+Proof.
+  intros_all. split.
+  intro H1.
+  apply transitive_star_derivation'.
+  apply transitive_star_derivation' in H1.
+  case H1. clear H1. intro H1. left.
+  rewrite H in H1.
+  rewrite H0 in H1; assumption.
+
+  intro H2. destruct H2. destruct H2. destruct H3. destruct H3.
+  right. rewrite H in *. exists x1. split. assumption.
+  exists x2. rewrite H0 in H4.
+  split; assumption.
+
+  intro H1.
+  apply transitive_star_derivation'.
+  apply transitive_star_derivation' in H1.
+  case H1.
+  clear H1. intro H1. left.
+  rewrite <- H in H1.
+  rewrite <- H0 in H1; assumption.
+
+  intro H2. destruct H2. destruct H2. destruct H3. destruct H3.
+  right. rewrite <- H in *. exists x1. split. assumption.
+  exists x2. rewrite <- H0 in H4.
+  split; assumption.
+Qed.
+
+Instance rw_lab_eqC_lab_body : Proper (lab_eqC ==> iff) lab_body.
+Proof.
+Admitted.
+
+Instance rw_lab_eqC_term : Proper (lab_eqC ==> iff) lab_term.
+Proof.
+Admitted.
+
+Instance rw_lab_eqC_fv : Proper (lab_eqC ==> VarSet.Equal) fv.
+Proof.
+Admitted.
+
+Instance rw_eqC_app : Proper (lab_eqC ++> lab_eqC ++> lab_eqC) pterm_app.
+Proof. 
+Admitted.
+  
+Instance rw_lab_eqC_subst_right : forall t, Proper (lab_eqC ++> lab_eqC) (pterm_sub t).
+Proof.
+Admitted.
+  
+Instance rw_lab_eqC_lab_subst_right : forall t, Proper (lab_eqC ++> lab_eqC) (pterm_sub' t).
+Proof.
+Admitted.  
+  
+
+  
 (** Unlabelled reduction is in the corresponding labelled reduction. *)
 Lemma sys_Bx_is_lab_sys_lx: forall t t', t -->lex t' -> t -->[lex] t'.
 Proof.

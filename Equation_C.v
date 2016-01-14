@@ -2,7 +2,7 @@ Require Import Arith Metatheory.
 Require Import LibTactics LambdaES_Tac.
 Require Import LambdaES_Defs LambdaES_FV LambdaES_Infra.
 Require Import Rewriting_Defs Rewriting_Lib.
-Require Export Morphisms.
+Require Import Morphisms.
 
 Instance iff_eq : Equivalence iff.
 Proof. 
