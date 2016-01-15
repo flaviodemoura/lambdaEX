@@ -378,13 +378,13 @@ Lemma lc_abs_iff_body: forall t x n,
       lc_at' n x -> (lc_at' n (pterm_abs t) <-> lc_at' n (open_rec 0 x t)).
 Proof.
   split.
-  generalize dependent x.
+(*  generalize dependent x.
   generalize dependent n.
   generalize dependent t.
   induction t.
   simpl. case n.
   intros. assumption.
-  simpl. intros. simpl.
+  simpl. intros. simpl.*)
   
   Focus 2.
   generalize dependent x.
@@ -443,18 +443,8 @@ Admitted.
     split. split.
     2: apply Lt.lt_0_Sn.
 Admitted.
-    
-    
+(*15/JAN/2016*)    
 
-
-
-
- intros.
-    destruct H.
-    case n in *.
-      assumption.
-      simpl. case n in *. apply H in IHn. in H. intros. case n in *.  simpl in IHn.
-      
 
 Lemma lc_abs_iff_body: forall t x, (lc_at' 0 x /\ lc_at' 0 (pterm_abs t)) <-> lc_at' 0 (open_rec 0 x t).
 Proof.
