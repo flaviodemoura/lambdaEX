@@ -217,6 +217,44 @@ Inductive lab_term : pterm -> Prop :=
       (term t2) -> (SN lex t2) -> 
       lab_term (t1 [[ t2 ]]).
 
+Definition lc' t := lc_at' 0 t.
+
+Definition body' t := exists L, forall x, x \notin L -> lc_at 0 (t ^ x).
+
+(*
+Lemma LC_ABS_IFF_BODY: forall t, lc' (pterm_abs t) <-> body' t.
+Proof.
+  split.
+  unfold lc'. unfold body'. simpl.
+  exists (fv t). intros.
+  unfold open.
+  induction t.
+    simpl. case n.
+      constructor.
+      intros. inversion H. subst.
+      
+  
+  induction t.
+  unfold lc'. simpl. intro.
+  unfold body'. exists {}. intros.
+  inversion H. simpl. constructor.
+  inversion H2.
+  
+  unfold lc'. unfold body'.
+  exists {}. intros. simpl. constructor.
+  
+  intro.
+  destruct H.
+  unfold lc' in *. unfold body' in *.
+  exists ((fv t1) \u (fv t2)). intros. destruct H.
+  simpl. split. unfold open in *.
+  generalize H0. apply IHt1 with (L:=fv t1 \u fv t2).
+  
+  unfold apply IHt1.
+  *)
+  
+  
+
 Lemma lc_at_le: forall t n m, n <= m ->
       lc_at' n t -> lc_at' m t.
 Proof.
@@ -334,7 +372,165 @@ Proof.
   intro. inversion H.
 Qed.
 
-Lemma lema1: forall n x t, lc_at' (S n) t -> lc_at' n (open_rec n x t).
+(** GENERALIZAÇÃO DO LEMA SUBST_BODY DO CHARGUERAUD,
+    POR ISSO É NECESSARIO QUE O TERMO x SEJA lc_at n**)
+Lemma lc_abs_iff_body: forall t x n, 
+      lc_at' n x -> (lc_at' n (pterm_abs t) <-> lc_at' n (open_rec 0 x t)).
+Proof.
+  split.
+  generalize dependent x.
+  generalize dependent n.
+  generalize dependent t.
+  induction t.
+  simpl. case n.
+  intros. assumption.
+  simpl. intros. simpl.
+  
+  Focus 2.
+  generalize dependent x.
+  generalize dependent n.
+  generalize dependent t.
+  induction t.
+    simpl. case n in *.
+    intros.
+    apply Lt.lt_0_Sn.
+    
+    simpl. intros.
+    apply Lt.lt_S in H0. assumption.
+    
+    simpl. constructor.
+    
+    simpl in *. intros. split.
+    apply IHt1 with x. assumption. apply H0.
+    apply IHt2 with x. assumption. apply H0.
+    
+    simpl in *.
+    intros. apply IHt with x.
+    apply lc_at_le with n. apply Le.le_n_Sn.
+    assumption.
+Lemma lema1: forall t k n x, 
+      lc_at' n x -> lc_at' n ({(S k) ~> x}t) -> lc_at' n ({k ~> x}t).
+Proof.
+  induction t.
+  simpl. case n.
+  intros. case (k === 0).
+  intro. assumption.
+  intro. assumption.
+  
+  intros. case (k === S n0).
+  intro. assumption.
+  intro. simpl.
+Admitted.
+    apply lema1.
+    apply lc_at_le with n.
+    apply Le.le_n_Sn. assumption. assumption.
+    
+    simpl. intros.
+    destruct H0. simpl in *. split.
+    apply IHt1 with x.
+    apply lc_at_le with n.
+    apply Le.le_n_Sn. assumption.
+    apply lema1. apply lc_at_le with n.
+    apply Le.le_n_Sn. assumption.
+    assumption.
+    apply IHt2 with x. assumption.
+    assumption.
+    
+    simpl in *. induction t2.
+    intros n0 x H. simpl in *.
+    case n in *. case x in *.
+    simpl in *. intros.
+    split. split.
+    2: apply Lt.lt_0_Sn.
+Admitted.
+    
+    
+
+
+
+
+ intros.
+    destruct H.
+    case n in *.
+      assumption.
+      simpl. case n in *. apply H in IHn. in H. intros. case n in *.  simpl in IHn.
+      
+
+Lemma lc_abs_iff_body: forall t x, (lc_at' 0 x /\ lc_at' 0 (pterm_abs t)) <-> lc_at' 0 (open_rec 0 x t).
+Proof.
+  split.
+  generalize dependent x.
+  generalize dependent t.
+  induction t.
+    simpl. intros. destruct H.
+    case n in *.
+    assumption. inversion H0. inversion H2.
+    
+    simpl. intros. constructor.
+    
+    simpl. intros. destruct H. split.
+    apply IHt1. simpl.
+    split. assumption. apply H0.
+    apply IHt2. simpl.
+    split. assumption. apply H0.
+    
+    simpl. intros. destruct H.
+    simpl in IHt.
+Admitted.
+    
+
+(*Forma anterior: Lemma lema1: 
+  forall n t x, lc_at' (S n) t -> lc_at' n (open_rec n x t).*)
+Lemma lema1: forall n t x, lc_at' (S n) t -> lc_at' n x -> lc_at' (S n) (open_rec n x t).
+Proof.
+  induction t.
+    simpl. intros. case (n === n0).
+      intro. subst. apply lc_at_le with n0.
+      apply Le.le_n_Sn. assumption.
+      
+      intro. simpl. assumption.
+    
+    simpl. intros. constructor.
+    
+    simpl. intros. destruct H. split.
+    apply IHt1; assumption.
+    apply IHt2; assumption.
+    
+    simpl. intros.
+    
+    
+      
+      apply lc_at_le with 0. apply Le.le_n_Sn. assumption.
+      simpl. assumption.
+    
+    simpl. constructor.
+    
+    simpl. intros. inversion H. split.
+    apply IHt1; assumption.
+    apply IHt2; assumption.
+    
+    simpl. intros.
+    apply IHt.
+    inversion H.
+    
+
+Lemma lema2: forall n t x, lc_at' n t -> lc_at' n x -> lc_at' n (open_rec n x t).
+
+Proof.
+  induction n.
+  intros.
+  induction t.
+    simpl. case n in *.
+      constructor.
+      inversion H. inversion H1.
+    
+    simpl. constructor.
+    
+    simpl. inversion H.
+    split. 
+    
+    
+    
 Admitted.
 
 
