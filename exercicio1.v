@@ -394,8 +394,9 @@ Proof.
   intros.
   apply open_var_lc.
   unfold body'. exists (fv (pterm_abs t)).
-  intros. rewrite lc_at_abs in H. simpl in *.
-  skip. (*SKIPPED SUBGOAL*)
+  intros.
+  skip. (*NAO CONSIGO GENERALIZAR IHt PARA UM TERMO t:= pterm_abs t*)
+  
   
   simpl in *. intros.
   apply notin_union in H0. split.
