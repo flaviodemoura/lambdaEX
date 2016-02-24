@@ -191,13 +191,15 @@ Fixpoint lc_at' (k:nat) (t:pterm) {struct t} : Prop :=
   | pterm_fvar x    => True
   | pterm_app t1 t2 => lc_at' k t1 /\ lc_at' k t2
   | pterm_abs t1    => lc_at' (S k) t1
-  | pterm_sub t1 t2 => (lc_at' (S k) t1) /\ lc_at' k t2
+(*| pterm_sub t1 t2 => (lc_at' (S k) t1) /\ lc_at' k t2*)
+  | pterm_sub t1 t2 => (lc_at' k t1) /\ lc_at' k t2
   | pterm_sub' t1 t2 => (
     match t2 with
     | pterm_sub' t1' t2' => False
+(*  | _ => (SN lex t2) /\ lc_at' (S k) t2*)
     | _ => (SN lex t2) /\ lc_at' k t2
-    end) /\ (lc_at' (S k) t1) 
-  end.
+  end) /\ (lc_at' k t1)
+  end. (*ALTERADOS COM BASE NO SUBST_LC DO CHARGUERAUD*)
 
 Inductive lab_term : pterm -> Prop :=
   | lab_term_var : forall x,
@@ -217,44 +219,31 @@ Inductive lab_term : pterm -> Prop :=
       (term t2) -> (SN lex t2) -> 
       lab_term (t1 [[ t2 ]]).
 
+Inductive lab_term_lc : pterm -> Prop :=
+  | lab_term_var_lc : forall x,
+      lab_term_lc (pterm_fvar x)
+  | lab_term_app_lc : forall t1 t2,
+      lab_term_lc t1 -> 
+      lab_term_lc t2 -> 
+      lab_term_lc (pterm_app t1 t2)
+  | lab_term_abs_lc : forall L t1,
+      (forall x, x \notin L -> lab_term_lc (t1 ^ x)) ->
+      lab_term_lc (pterm_abs t1)
+  | lab_term_sub_lc : forall L t1 t2,
+     (forall x, x \notin L -> lab_term_lc (t1 ^ x)) ->
+      lab_term_lc t2 -> lab_term_lc (t1[t2])
+  | lab_term_sub_lc' : forall L t1 t2,
+     (forall x, x \notin L -> lab_term_lc (t1 ^ x)) ->
+      (lc_at' 0 (t1 [[t2]])) -> (SN lex t2) -> 
+      lab_term_lc (t1 [[ t2 ]]).
+
 Definition lc' t := lc_at' 0 t.
 
-Definition body' t := exists L, forall x, x \notin L -> lc_at 0 (t ^ x).
+Definition body' t := exists L, forall x, x \notin L -> lc_at' 0 (t ^ x).
 
+
+  
 (*
-Lemma LC_ABS_IFF_BODY: forall t, lc' (pterm_abs t) <-> body' t.
-Proof.
-  split.
-  unfold lc'. unfold body'. simpl.
-  exists (fv t). intros.
-  unfold open.
-  induction t.
-    simpl. case n.
-      constructor.
-      intros. inversion H. subst.
-      
-  
-  induction t.
-  unfold lc'. simpl. intro.
-  unfold body'. exists {}. intros.
-  inversion H. simpl. constructor.
-  inversion H2.
-  
-  unfold lc'. unfold body'.
-  exists {}. intros. simpl. constructor.
-  
-  intro.
-  destruct H.
-  unfold lc' in *. unfold body' in *.
-  exists ((fv t1) \u (fv t2)). intros. destruct H.
-  simpl. split. unfold open in *.
-  generalize H0. apply IHt1 with (L:=fv t1 \u fv t2).
-  
-  unfold apply IHt1.
-  *)
-  
-  
-
 Lemma lc_at_le: forall t n m, n <= m ->
       lc_at' n t -> lc_at' m t.
 Proof.
@@ -371,485 +360,81 @@ Proof.
   
   intro. inversion H.
 Qed.
+*)
 
-(** GENERALIZAÇÃO DO LEMA SUBST_BODY DO CHARGUERAUD,
-    POR ISSO É NECESSARIO QUE O TERMO x SEJA lc_at n**)
-Lemma lc_abs_iff_body: forall t x n, 
-      lc_at' n x -> (lc_at' n (pterm_abs t) <-> lc_at' n (open_rec 0 x t)).
+Lemma lc_at_abs: forall t n, lc_at' n (pterm_abs t) = lc_at' (S n) t.
 Proof.
-  split.
-(*  generalize dependent x.
-  generalize dependent n.
-  generalize dependent t.
-  induction t.
-  simpl. case n.
-  intros. assumption.
-  simpl. intros. simpl.*)
-  
-  Focus 2.
-  generalize dependent x.
-  generalize dependent n.
-  generalize dependent t.
-  induction t.
-    simpl. case n in *.
-    intros.
-    apply Lt.lt_0_Sn.
-    
-    simpl. intros.
-    apply Lt.lt_S in H0. assumption.
-    
-    simpl. constructor.
-    
-    simpl in *. intros. split.
-    apply IHt1 with x. assumption. apply H0.
-    apply IHt2 with x. assumption. apply H0.
-    
-    simpl in *.
-    intros. apply IHt with x.
-    apply lc_at_le with n. apply Le.le_n_Sn.
-    assumption.
-Lemma lema1: forall t k n x, 
-      lc_at' n x -> lc_at' n ({(S k) ~> x}t) -> lc_at' n ({k ~> x}t).
+  simpl. reflexivity.
+Qed.
+
+Lemma open_var_lc: forall t x, body' t -> lc_at' 0 (t^x).
 Proof.
-  induction t.
-  simpl. case n.
-  intros. case (k === 0).
-  intro. assumption.
-  intro. assumption.
-  
-  intros. case (k === S n0).
-  intro. assumption.
-  intro. simpl.
-Admitted.
-    apply lema1.
-    apply lc_at_le with n.
-    apply Le.le_n_Sn. assumption. assumption.
-    
-    simpl. intros.
-    destruct H0. simpl in *. split.
-    apply IHt1 with x.
-    apply lc_at_le with n.
-    apply Le.le_n_Sn. assumption.
-    apply lema1. apply lc_at_le with n.
-    apply Le.le_n_Sn. assumption.
-    assumption.
-    apply IHt2 with x. assumption.
-    assumption.
-    
-    simpl in *. induction t2.
-    intros n0 x H. simpl in *.
-    case n in *. case x in *.
-    simpl in *. intros.
-    split. split.
-    2: apply Lt.lt_0_Sn.
-Admitted.
-(*15/JAN/2016*)    
-
-
-Lemma lc_abs_iff_body: forall t x, (lc_at' 0 x /\ lc_at' 0 (pterm_abs t)) <-> lc_at' 0 (open_rec 0 x t).
-Proof.
-  split.
-  generalize dependent x.
-  generalize dependent t.
-  induction t.
-    simpl. intros. destruct H.
-    case n in *.
-    assumption. inversion H0. inversion H2.
-    
-    simpl. intros. constructor.
-    
-    simpl. intros. destruct H. split.
-    apply IHt1. simpl.
-    split. assumption. apply H0.
-    apply IHt2. simpl.
-    split. assumption. apply H0.
-    
-    simpl. intros. destruct H.
-    simpl in IHt.
-Admitted.
-    
-
-(*Forma anterior: Lemma lema1: 
-  forall n t x, lc_at' (S n) t -> lc_at' n (open_rec n x t).*)
-Lemma lema1: forall n t x, lc_at' (S n) t -> lc_at' n x -> lc_at' (S n) (open_rec n x t).
-Proof.
-  induction t.
-    simpl. intros. case (n === n0).
-      intro. subst. apply lc_at_le with n0.
-      apply Le.le_n_Sn. assumption.
-      
-      intro. simpl. assumption.
-    
-    simpl. intros. constructor.
-    
-    simpl. intros. destruct H. split.
-    apply IHt1; assumption.
-    apply IHt2; assumption.
-    
-    simpl. intros.
-    
-    
-      
-      apply lc_at_le with 0. apply Le.le_n_Sn. assumption.
-      simpl. assumption.
-    
-    simpl. constructor.
-    
-    simpl. intros. inversion H. split.
-    apply IHt1; assumption.
-    apply IHt2; assumption.
-    
-    simpl. intros.
-    apply IHt.
-    inversion H.
-    
-
-Lemma lema2: forall n t x, lc_at' n t -> lc_at' n x -> lc_at' n (open_rec n x t).
-
-Proof.
-  induction n.
-  intros.
-  induction t.
-    simpl. case n in *.
-      constructor.
-      inversion H. inversion H1.
-    
-    simpl. constructor.
-    
-    simpl. inversion H.
-    split. 
-    
-    
-    
 Admitted.
 
-
-Lemma lc_at_open_abs: 
-      forall t x, lc_at' 1 t  <-> lc_at' 0 (t^x).
+(*Lemma lc_at_abs_iff_lc_at_open: forall t, 
+      lc_at' 0 (pterm_abs t) <-> exist L, (forall x, x \notin L -> lc_at' 0 (t ^ x)).*)
+Lemma lc_abs_iff_body: forall t, 
+      lc_at' 0 (pterm_abs t) <-> body' t.
 Proof.
-  split.
-  generalize dependent x.
+  unfold body'.
+  split. intro. exists (fv t).
   generalize dependent t.
-  induction t using pterm_size_induction.
-  
-  intros.
-  (*unfold open. simpl.
-  case n in *.
-    simpl. constructor.*)
+  induction t.
+  simpl. intros.
   inversion H. simpl. constructor.
-  inversion H1.
-  
-  simpl. intros; assumption.
-  
-  simpl. intros.
-  apply lema1 with (x:=(pterm_fvar x)) in H0.
-  assumption.
-  
-  simpl. intros.
-  destruct H.
-  split. apply IHt1. assumption.
-  apply IHt2; assumption.
-  
-  simpl. intros.
-  destruct H0. split.
-  apply lema1 with (x:=(pterm_fvar x)) in H0.
-  assumption.
-  apply IHt1. assumption.
-  
-  intros.
-  case t2 in *.
-    simpl in H0.
-    destruct H0. destruct H0.
-    inversion H2. simpl.
-    split. split. unfold SN.
-    exists 0. constructor.
-    intros.
-    SearchAbout lex.
-
-Lemma lema2: forall x t, (pterm_fvar x -->lex t) -> False.
-
-
-    destruct H3. destruct H3. destruct H3.
-    destruct H5. inversion H5.
-    (*
-    VERIFICAR CONTRADICAO EM H3, POIS UMA VARIAVEL NAO SE REDUZ.
-    *)
+  apply Le.le_Sn_0 in H2. contradiction.
     
-    
-  Admitted.
-Lemma lc_at_open_abs_n: 
-      forall t x n, lc_at' (S n) t  <-> lc_at' n (t^x).
-Proof.
-  split. 
-  generalize dependent n.
-  generalize dependent x.
-  generalize dependent t.
-  induction t.
-  simpl. intros. case n in *. simpl. constructor.
-  simpl.
-  inversion H.
-  subst. inversion H.
-
-
-  Focus 2.
-  intros. destruct H.
-  simpl. split.
-  apply IHt1. assumption.
-  apply IHt2. assumption.
-  
-  Focus 2. simpl. intros.
-  destruct H0. split.
-  Focus 2. apply IHt1. assumption.
-  simpl in IHt1. unfold open.
-  SearchAbout open.
-(*PAREI AQUI*)
-Admitted.  
-
-Lemma lc_at_open_lab_term_open: forall t x, 
-      lc_at' 0 (t^x) -> lab_term (t^x).
-Proof.
-  induction t.
-  intros. unfold open.
-  simpl. case n in *. constructor.
-  intros. simpl in H. inversion H.
-  
-  unfold open. simpl. constructor.
-  
-  unfold open. simpl. intros.
-  destruct H. constructor.
-  apply IHt1. assumption.
-  apply IHt2. assumption.
-  
-  unfold open. simpl. intros.
-  apply lab_term_abs with (fv t).
-  intros. rewrite lc_at_open_abs with (x:=x0) in H.
-  Admitted.
-
-Lemma lab_term_to_lc_at': forall t i, lab_term t -> lc_at' i t.
-Proof.
-  assert (forall t x, lc_at' 0 (t^x) -> lc_at' 1 t). 
-  apply lc_at_open_abs.
-  assert (forall t x i, lc_at' 0 (t^x) -> lc_at' 1 t -> lc_at' (S i) t).
-  intros.
-  apply lc_at_le with 1.
-  apply Le.le_n_S. apply Le.le_0_n. assumption.
-  
-  induction t using pterm_size_induction.
-  intros.
-  inversion H1.
-
-  intros.
   simpl. constructor.
-
-  intros. simpl.
-  inversion H2. subst.
-  pick_fresh x.
-  apply notin_union in Fr; destruct Fr.
-  apply notin_union in H3; destruct H3.
-  apply H0 with x.
-    apply H1. assumption. reflexivity.
-    apply H4. assumption.
-    
-    apply H with x. apply H1.
-    assumption. reflexivity.
-    apply H4. assumption.
   
-  intros. simpl.
-  inversion H1. split.
-  apply IHt1; assumption.
-  apply IHt2; assumption.
+  simpl in *. intros.
+  apply notin_union in H0. split.
+  apply IHt1. apply H. apply H0.
+  apply IHt2. apply H. apply H0.
   
-  intros. simpl.
-  inversion H2. subst.
-  pick_fresh x.
-  apply notin_union in Fr; destruct Fr. 
-  apply notin_union in H3; destruct H3.
-  apply notin_union in H3; destruct H3.
-  split.
-    apply H0 with x.
-    apply H1. assumption. reflexivity.
-    apply H5. assumption.
-    apply H with x. apply H1.
-    assumption. reflexivity.
-    apply H5. assumption.
-    
-    apply IHt1. assumption.
-      
-  intros. simpl.
-  inversion H2. subst.
-  pick_fresh x.
-  apply notin_union in Fr; destruct Fr.
-  apply notin_union in H3; destruct H3.
-  apply notin_union in H3; destruct H3.
-  inversion H6. subst.
-    simpl. split. split.
-    assumption. constructor.
-    apply lc_at_le with 1.
-      apply Le.le_n_S. apply Le.le_0_n.
-      
-      apply H with x.
-      apply H1. assumption. reflexivity.
-      apply H5. assumption.
-    
-    subst. split. split. assumption.
-    apply IHt1. apply term_lab_term.
-    assumption.
-    apply lc_at_le with 1.
-      apply Le.le_n_S. apply Le.le_0_n.
-      
-      apply H with x. apply H1. assumption. reflexivity.
-      apply H5. assumption.
-    
-    subst. split. split. assumption.
-    apply IHt1. apply term_lab_term. assumption.
-    apply lc_at_le with 1.
-      apply Le.le_n_S. apply Le.le_0_n.
-      
-      apply H with x. apply H1. assumption. reflexivity.
-      apply H5. assumption.
-      
-    subst. split. split. assumption.
-    apply IHt1. apply term_lab_term. assumption.
-    apply lc_at_le with 1.
-      apply Le.le_n_S. apply Le.le_0_n.
-      
-      apply H with x. apply H1. assumption. reflexivity.
-      apply H5. assumption.
-Qed.
-
-Lemma term_lc_at: forall t, term t -> lc_at' 0 t.
-Proof.
-  induction t.
-  intro. inversion H.
-  
-  intro. constructor.
-  
-  intro. simpl.
-  inversion H. split.
-  apply IHt1; assumption.
-  apply IHt2; assumption.
-  
-  intro. simpl.
-  inversion H. subst.
-  pick_fresh x.
-  apply notin_union in Fr. destruct Fr.
-  assert (term (t^x)). apply H1. assumption.
-  apply term_lab_term in H3.
-  apply lab_term_to_lc_at' with (i:=0) in H3.
-  rewrite <- lc_at_open_abs in H3. assumption.
-  
-  intro. simpl.
-  inversion H. subst.
-  pick_fresh x.
-  apply notin_union in Fr. destruct Fr.
-  apply notin_union in H0. destruct H0.
-  assert (term (t1^x)). apply H2. assumption.
-  apply term_lab_term in H5.
-  apply lab_term_to_lc_at' with (i:=0) in H5.
-  rewrite <- lc_at_open_abs in H5.
-  split. assumption.
-  apply IHt2. assumption.
-  
-  intro.
-  inversion H.
-Qed.
-
-Lemma lab_term_equiv_lc_at': forall t, lc_at' 0 t <-> lab_term t.
-Proof.
-  intro. split.
-  Focus 2.
-  apply lab_term_to_lc_at'.
-  
-  intro.
-  induction t.
-  inversion H.
-  
-  constructor.
-  
-  destruct H. apply lab_term_app.
-  apply IHt1; assumption.
-  apply IHt2; assumption.
-  
-  simpl in H.
-  apply lab_term_abs with (fv t).
   intros.
-  assert (lc_at' 1 t -> lc_at' 0 (t^x)).
-  apply lc_at_open_abs.
-  assert (lc_at' 0 (t^x)).
-  apply H1. assumption.
-  apply lc_at_open_lab_term_open. assumption.
+  apply open_var_lc.
+  unfold body'. exists (fv (pterm_abs t)).
+  intros. rewrite lc_at_abs in H. simpl in *.
+  skip. (*SKIPPED SUBGOAL*)
   
-  pick_fresh x.
-  inversion H.
-  apply lab_term_sub with (fv t1 \u fv t2).
-    intros. 
-    assert (lc_at' 1 t1 -> lc_at' 0 (t1^x0)).
-    apply lc_at_open_abs.
-    assert (lc_at' 0 (t1^x0)). apply H3. assumption.
-    apply lc_at_open_lab_term_open. assumption.
-    apply IHt2. assumption.
-  
-  pick_fresh x.
-  assert (forall t x, lc_at' 1 t -> lc_at' 0 (t^x)).
-  apply lc_at_open_abs.
-  assert (lc_at' 0 (t1 ^ x)).
-  apply H0. inversion H. assumption.
-  inversion H.
-  apply lab_term_sub' with (fv t1 \u fv t2).
-  intros. apply lc_at_open_lab_term_open.
-  apply H0. assumption.
-  case t2 in *.
-    destruct H2. inversion H4.
-    constructor.
-    assert (lab_term (pterm_app t2_1 t2_2)).
-    apply IHt2. apply H2. simpl in *.
-    inversion H4. subst.
-    
+  simpl in *. intros.
+  apply notin_union in H0. split.
+  (*VERIFICAR COMPORTAMENTO DE sub EM RELACAO A t1*)
 Admitted.
-(*PAREI AQUI*)
+  
+(** Alteração na definicao de LAB_TERM para LAB_TERM_LC
+    exigencia (TERM t2) trocada por (LC_AT 0 (t1 [[t2]])) **)
 
-Definition term'' t := lc_at' 0 t.
-
-Definition body'' t := lc_at' 1 t.
-
-Lemma term_term''_equiv: forall t, term t <-> term'' t.
+Lemma lab_term_lc_equiv_lc_at': forall t, lc_at' 0 t <-> lab_term_lc t.
 Proof.
-  intro. unfold term''. split.
-  generalize dependent t. induction 1.
-  
-  (**Ida *)
-  simpl. apply I.
-  
-  simpl. split.
-  apply IHterm1; assumption.
-  apply IHterm2; assumption.
-  
-  simpl. assert (body t1). unfold body. 
-  exists L. apply H.
-  pick_fresh y. apply notin_union in Fr.
-  destruct Fr.
-  apply lema1 with y. apply H0. assumption.
-  
-  simpl. pick_fresh y.
-  apply notin_union in Fr. destruct Fr.
-  split. apply lema1 with y. apply H0.
-  apply notin_union in H2. destruct H2.
-  assumption. assumption.
-  
-  (**Volta*)
+  split.
   induction t.
-  simpl. intro. inversion H.
+  simpl. intro. apply Lt.lt_n_0 in H. contradiction.
   
-  simpl. intro. apply term_var.
+  simpl. constructor.
   
-  simpl. intro.
-  destruct H. apply term_app.
-  apply IHt1; assumption.
-  apply IHt2; assumption.
+  simpl. intro. constructor.
+  apply IHt1. apply H.
+  apply IHt2. apply H.
   
-  simpl. intro.
-  apply term_abs with (L:=fv(t)).
-  intros.
+  intro.
+  rewrite lc_abs_iff_body in H.
+  destruct H.
+  apply lab_term_abs_lc with x.
+  intros. assert (lc_at' 0 (t ^ x0)).
+  apply H. assumption.
+  unfold open in *.
+  case t in *.
+    simpl. case n in *.
+      constructor. inversion H1.
+    
+    simpl. constructor.
+    
+    simpl in *. apply lab_term_app_lc.
+    
+    
+
+(*PAREI AQUI*)
 Admitted.
 
 Fixpoint xc_rec (n:nat) (t: pterm) : pterm :=
@@ -923,280 +508,4 @@ Proof.
   apply xc_term_term. assumption.
   rewrite xc_term_term; assumption.
 Qed.
-
-Lemma term'_abs_iff_body: forall t, term' (pterm_abs t) <-> body' t.
-Proof.
-  intro. split. unfold term'. unfold body'.
-  simpl. intro. assumption.
-  
-  unfold body'. unfold term'.
-  simpl. intro. assumption.
-Qed.
-
-Lemma open_var_term': forall t x, body' t -> term' (t ^ x).
-Proof.
-  unfold body'. unfold term'.
-  induction t.
-
-  simpl. intros. case n in *. simpl.
-  apply I. simpl. apply Lt.lt_S_n in H.
-  apply Lt.lt_n_0 in H. contradiction.
-  
-  simpl. intros; assumption.
-  
-  simpl. intros. destruct H. split.
-  apply IHt1; assumption.
-  apply IHt2; assumption.
-  
-  intros.
-Admitted.
-  
-  
-
-
-Lemma equiv_term_term': forall t, term' t <-> term t.
-Proof.
-  intro. split. intro.
-  induction t.
-  
-  inversion H.
-  
-  apply term_var.
-  
-  inversion H.
-  apply term_app.
-  apply IHt1. unfold term'. assumption.
-  apply IHt2. unfold term'. assumption.
-  
-  apply term_abs with (L:= {}).
-  intros. 
-Lemma 
-(*
-Lemma lc_sterm: forall t n, sterm t -> lc_at' n t -> xc_rec n t = t.
-Proof.
-  induction 1.
-  
-  simpl. reflexivity.
-  
-  simpl. intros. destruct H1.
-  rewrite IHsterm1. rewrite IHsterm2.
-  reflexivity. assumption. assumption.
-  
-  simpl. intros. 
-Admitted.
-
-Lemma lc_at_Sn: forall t n0 n1, n0 <= n1 -> lc_at n0 t -> lc_at n1 t.
-Proof.
-  induction t.
-  simpl. intros.
-  apply Lt.lt_le_trans with n0.
-  assumption. assumption.
-  
-  simpl. intros; assumption.
-  
-  simpl. intros.
-  destruct H0. split.
-  apply IHt1 with n0; assumption.
-  apply IHt2 with n0; assumption.
-  
-  simpl. intros. apply IHt with (S n0).
-  apply Le.le_n_S. assumption. assumption.
-  
-  simpl. intros.
-  destruct H0. split.
-  apply IHt1 with (S n0).
-  apply Le.le_n_S. assumption. assumption.
-  apply IHt2 with n0. assumption. assumption.
-  
-  simpl.
-  intros. assumption.
-Qed.
-
-Lemma xc_rec_Sn: forall t n0 n1, n0 <= n1 -> xc_rec n0 t = t -> xc_rec n1 t = t.
-Proof.
-  induction t.
-  
-  simpl. reflexivity.
-  
-  simpl. reflexivity.
-  
-  simpl. intros.
-  inversion H0. rewrite H2. rewrite H3.
-  rewrite IHt1 with n0 n1.
-  rewrite IHt2 with n0 n1.
-  reflexivity. assumption. assumption.
-  assumption. assumption.
-  
-  simpl. intros. rewrite IHt with (S n0) (S n1).
-  reflexivity. apply Le.le_n_S. assumption.
-  inversion H0. rewrite H2. assumption.
-  
-  simpl. intros. rewrite IHt2 with n0 n1.
-  rewrite IHt1 with (S n0) (S n1). reflexivity.
-  apply Le.le_n_S. assumption.
-  inversion H0. rewrite H2. assumption.
-  assumption.
-  inversion H0. rewrite H3. assumption.
-  
-  simpl. intros.
-  rewrite IHt1 with (S n0) (S n1).
-  rewrite <- H0. rewrite IHt1 with (S n0) (S n0).
-  reflexivity. reflexivity.
-  2: apply Le.le_n_S; assumption.
-Admitted.*)
-
-(*
-Lemma subst_fv : forall t u, fv(t ^^ u) [=] fv(t) \u fv(u).
-Proof.
-  induction t.
-  intros. simpl.
-  case u. intros. simpl.
-  Admitted.
-
-  
-Lemma xc_open : forall t x, fv (xc (t^x)) [=] fv ((xc t)^x).
-Proof.
-  Admitted.
-
-Lemma xc_fv: forall t, fv(xc(t)) [=] fv(t).
-Proof.
-  induction t.
-  simpl; reflexivity.
-  simpl; reflexivity.
-  simpl.
-  rewrite IHt1.
-  rewrite IHt2.
-  reflexivity.
-  simpl. assumption.
-  simpl.
-  rewrite IHt1.
-  rewrite IHt2.
-  reflexivity.
-
-  simpl.
-  rewrite subst_fv.
-  rewrite IHt1. reflexivity.
-Qed.
-  
-  (*
-Print VarSet.remove.
-SearchAbout VarSet.t. 
-Lemma lema3: forall t x, term t -> fv (t^x) [=] fv t. (*\rem (fv t \rem x).*)
-Proof.
-  intros.
-  induction H.
-  simpl. reflexivity.
-  
-  simpl.
-
-  unfold open.
-  rewrite fv_open_.
-  simpl.
-  
-  assert (term (t1^y)).
-  apply H. assumption.
-  induction H4.
-  simpl.
-  
-  Focus 2. SearchAbout fv.
-  unfold open. induction t1.
-  simpl.
-
-
-
-  unfold open. apply fv_in_open with (a:=y).
-  simpl.  rewrite fv_open_in. apply in_union.
-  right. apply in_singleton. reflexivity.
-  SearchAbout fv.
-  apply LambdaES_FV.fv_open_both_notin with (x:=y).
-  rewrite <- xc_open. assumption.
-  pick_fresh x.
-  apply notin_union in Fr. destruct Fr.
-  apply notin_union in H5. destruct H5.
-  assert (y<>x -> y \notin fv (xc (t1 ^ x))).
-  rewrite xc_open. intro. rewrite fv_open_in_neq.
-  2:assumption. 
-
-  apply fset_union_notin with (x:=y).
-
-  rewrite xc_open in H4.
-  rewrite LambdaES_FV.fv_open_in in H4.
-  rewrite LambdaES_FV.fv_open_in in H4.
-  Focus 5.
-  *)
-Lemma fv_notin_xc: forall t x, term t -> x \notin fv t -> x \notin fv (xc t).
-Proof.
-  intros t x H. induction H.
-  simpl. intro; assumption.
-  simpl. intro.
-  apply notin_union in H1. destruct H1.
-  apply notin_union. split.
-  apply IHterm1; assumption.
-  apply IHterm2; assumption.
-  simpl. intro.
-  pick_fresh y.
-  apply notin_union in Fr. destruct Fr.
-  apply notin_union in H2. destruct H2.
-  assert (term (t1 ^y)).
-  apply H. assumption.
-  assert (x \notin fv (xc (t1 ^ y))).
-  apply H0. assumption.
-  unfold open. rewrite fv_open_.
-  assumption. 
-  apply notin_singleton_swap in H4.
-  apply notin_singleton. assumption.
-
-  Admitted.
-
-
-
-Lemma xc_term_term: forall t, term t -> xc t = t.
-Proof.
-  intros t H.
-  induction H.
-  
-  unfold xc.
-  reflexivity.
-
-  simpl. 
-  rewrite IHterm1.
-  rewrite IHterm2.
-  reflexivity.
-
-  simpl.
-  pick_fresh y.
-  apply notin_union in Fr.
-  destruct Fr. 
-  assert (fv(xc(t1)) [=] fv(t1)).
-  apply xc_fv.
-  generalize H2. intro.
-  rewrite <- H3 in H4.
-  assert (xc (t1^y) = t1 ^y).
-  apply H0.
-  assumption.
-  rewrite xc_open in H5.
-  apply open_var_inj in H5.
-  rewrite H5; reflexivity.
-  assumption.
-  assumption.
-
-  simpl.
-  rewrite IHterm.
-  pick_fresh y.
-  apply notin_union in Fr.
-  destruct Fr.
-  apply notin_union in H2.
-  destruct H2.
-  assert (fv(xc(t1)) [=] fv(t1)).
-  apply xc_fv.
-  generalize H4. intro.
-  rewrite <- H5 in H4.
-  assert (xc (t1 ^ y) = t1 ^ y).
-  apply H0. assumption.
-  rewrite xc_open in H7.
-  apply open_var_inj in H7.
-  rewrite H7. reflexivity.
-  assumption. assumption.
-Qed.
-*)
 
