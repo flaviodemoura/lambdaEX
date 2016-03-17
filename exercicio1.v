@@ -376,6 +376,33 @@ Proof.
   simpl. reflexivity.
 Qed.
 
+Lemma lc_at'_term: forall t u k, lc_at' 0 t -> {k~>u}t = t.
+Proof.
+  induction t using pterm_induction'.  
+  
+  intros u k H.
+  inversion H.
+  intros u k H.
+  simpl; reflexivity.
+
+  intros u k H1.
+  simpl in *.
+  apply f_equal.
+  pick_fresh z.
+  apply open_var_inj with z.
+  rewrite <- union_assoc in Fr.
+  apply notin_union in Fr.
+  destruct Fr.
+  
+  rewrite H.
+  rewrite IHt1.
+  rewrite IHt2. reflexivity. assumption. assumption.
+
+  intros u k H.
+  simpl in *.
+  rewrite IHt. reflexivity.
+  
+  
 Lemma lc_at'_abs_iff_lab_term_open: forall L t, 
       lc_at' 0 (pterm_abs t) <-> 
       (forall x, x \notin L -> lab_term (t ^ x)).
