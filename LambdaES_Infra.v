@@ -528,6 +528,35 @@ Proof.
   apply Hsub'.
 Qed.
 
+Lemma pterm_induction' :
+ forall P : pterm -> Prop,
+ (forall n, P (pterm_bvar n)) ->
+ (forall x, P (pterm_fvar x)) ->
+ (forall t1,
+    (forall x, x \notin (fv t1) -> P (t1 ^ x)) -> P (pterm_abs t1)) ->
+ (forall t1 t2, P t1 -> P t2 -> P (pterm_app t1 t2)) ->
+ (forall t1 t2, P t2 -> 
+    (forall x, x \notin fv t1 -> P (t1 ^ x)) -> P (t1[t2])) ->
+  (forall t1 t2, P t2 -> 
+    (forall x, x \notin fv t1 -> P (t1 ^ x)) -> P (t1[[t2]])) -> 
+ (forall t, P t).
+Proof.
+  intros P Hbvar Hfvar Habs Happ Hes Hles.
+  induction t using pterm_size_induction.
+  apply Hbvar.
+  apply Hfvar.
+  apply Habs.
+  intros x H1.
+  apply H. assumption. reflexivity.
+  apply Happ; assumption. 
+  apply Hes. assumption.
+  intros x H1.
+  apply H. assumption. reflexivity.
+  apply Hles. assumption.
+  intros x H1.
+  apply H. assumption. reflexivity.
+Qed.
+  
 Fixpoint lc_at (k:nat) (t:pterm) {struct t} : Prop :=
   match t with 
   | pterm_bvar i    => i < k
