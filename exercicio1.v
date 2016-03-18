@@ -358,6 +358,30 @@ Proof.
   simpl. reflexivity.
 Qed.
 
+Lemma lc_at'_open_var_rec : forall x t k,
+  lc_at' (S k) t -> lc_at' k (open_rec k (pterm_fvar x) t).
+Proof.
+Admitted.
+
+Lemma fvar_nf: forall x t, pterm_fvar x -->lex t
+      -> False.
+Proof.
+Admitted.
+
+Lemma bvar_nf: forall n t, pterm_bvar n -->lex t
+      -> False.
+Proof.
+Admitted.
+
+Lemma SN_open_var: forall t x,
+      SN lex t -> SN lex (t^x).
+Proof.
+  intros.
+  induction H.
+  unfold SN.
+  exists x0. unfold open.
+Admitted.
+
 Lemma lc_at'_abs_lc_at'_open: forall t x,
       lc_at' 0 (pterm_abs t) -> lc_at' 0 (t^x).
 Proof.
@@ -371,7 +395,26 @@ Proof.
   simpl. intros; assumption.
   
   simpl. intros.
-Admitted.
+  apply lc_at'_open_var_rec. assumption.
+  
+  simpl. intros.
+  split. apply H. apply H1.
+  apply H0. apply H1.
+  
+  simpl. intros. split.
+  apply lc_at'_open_var_rec. apply H1.
+  apply H. apply H1.
+  
+Print lc_at'. 
+Print SN_ind. 
+simpl. intros. split.
+  apply lc_at'_open_var_rec. apply H1.
+  split.
+  apply lc_at_open_var_rec. apply H1.
+  SearchAbout SN.
+  
+  apply SN_open_var. apply H1.
+Qed.
 
 Lemma lc_at'_to_lab_term: forall t,
       lc_at' 0 t -> lab_term t.
