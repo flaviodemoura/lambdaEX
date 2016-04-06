@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import  Metatheory LambdaES_Defs Compare_dec LambdaES_Infra LambdaES_FV Rewriting_Defs Lambda_Ex.
+Require Import  Metatheory LambdaES_Defs Compare_dec LambdaES_Infra LambdaES_FV Rewriting_Defs Lambda_Ex Equation_C.
 
 Lemma fv_open_ : forall t k x y, x<>y -> (x \in fv ({k~>pterm_fvar y}t )  <-> x \in fv t).
 Proof.
@@ -358,28 +358,120 @@ Proof.
   simpl. reflexivity.
 Qed.
 
+Lemma lc_at_open_var_rec : forall x t k,
+  lc_at (S k) t -> lc_at k (open_rec k (pterm_fvar x) t).
+Proof.
+  induction t.
+  simpl. intros.
+  case (k === n). simpl. constructor.
+  simpl. intro. inversion H. 
+    symmetry in H1. contradiction.
+    apply Lt.lt_le_trans with (S n).
+    apply Lt.lt_n_Sn. assumption.
+  
+  simpl. constructor.
+  
+  simpl. intros. split.
+  apply IHt1. apply H.
+  apply IHt2. apply H.
+  
+  simpl. intros. apply IHt. assumption.
+  
+  simpl. intros. split.
+  apply IHt1. apply H.
+  apply IHt2. apply H.
+  
+  simpl. intros. contradiction.
+Qed.
+
+Lemma fvar_nf: forall t x, pterm_fvar x -->lex t
+      -> False.
+Proof.
+  induction t.
+  intros. inversion H.
+  destruct H0. destruct H0. destruct H1.
+  inversion H0. inversion H3.
+  inversion H2. inversion H9.
+  subst.
+Admitted.
+
+Lemma bvar_nf: forall t n, pterm_bvar n -->lex t
+      -> False.
+Proof.
+  intros.
+Admitted.
+
+(*Lemma SN_kesner_IE: forall t u,
+      (SN lex u /\ t[u] -->lex ({0 ~> u} t)) -> SN lex (t[u]).
+Proof.
+  induction t. 
+  intros. destruct H. simpl in H0.
+  case n in *. 
+  unfold SN. exists 0. apply SN_intro. intros. unfold lex. SearchAbout SN_ind.*)
+Lemma SN_kesner_to_lex: forall t t', 
+      (t -->lex t' /\ SN lex t') -> SN lex t.
+Proof.
+  induction t.
+  intros. destruct H. apply bvar_nf in H.
+  contradiction.
+  
+  intros. destruct H. apply fvar_nf in H.
+  contradiction.
+  
+  intros. unfold SN. destruct H. inversion H0.
+  exists x. SearchAbout SN_ind.
+  
+Admitted.
+(*
+  intros. inversion H. inversion H1. 
+  destruct H2 with t'. assumption. unfold SN.
+  exists x0. apply H3.
+Qed.*)
+(**  intros. assert (t -->lex t -> SN lex t).
+  apply red_refl.
+  destruct H with t. apply H. Print red_refl. Print "-->lex".
+  Print Equation_C.red_ctx_mod_eqC.
+  unfold Equation_C.red_ctx_mod_eqC.
+  Print Equation_C.eqC. unfold Equation_C.eqC.
+  SearchAbout lex.
+Admitted.**)
+
 Lemma lc_at'_open_var_rec : forall x t k,
   lc_at' (S k) t -> lc_at' k (open_rec k (pterm_fvar x) t).
 Proof.
-Admitted.
-
-Lemma fvar_nf: forall x t, pterm_fvar x -->lex t
-      -> False.
-Proof.
-Admitted.
-
-Lemma bvar_nf: forall n t, pterm_bvar n -->lex t
-      -> False.
-Proof.
+  induction t.
+  simpl. intros.
+  case (k === n). simpl. constructor.
+  simpl. intro. inversion H. 
+    symmetry in H1. contradiction.
+    apply Lt.lt_le_trans with (S n).
+    apply Lt.lt_n_Sn. assumption.
+  
+  simpl. constructor.
+  
+  simpl. intros. split.
+  apply IHt1. apply H.
+  apply IHt2. apply H.
+  
+  simpl. intros. apply IHt. assumption.
+  
+  simpl. intros. split.
+  apply IHt1. apply H.
+  apply IHt2. apply H.
+  
+  simpl. intros. split.
+  apply IHt1. apply H.
+  split. apply lc_at_open_var_rec. apply H.
+  
+  destruct H. destruct H0. inversion H1. inversion H2.
 Admitted.
 
 Lemma SN_open_var: forall t x,
       SN lex t -> SN lex (t^x).
 Proof.
+  unfold SN. intros. destruct H. exists x0.
+  generalize dependent x. inversion H. induction t.
   intros.
-  induction H.
-  unfold SN.
-  exists x0. unfold open.
 Admitted.
 
 Lemma lc_at'_abs_lc_at'_open: forall t x,
@@ -405,13 +497,10 @@ Proof.
   apply lc_at'_open_var_rec. apply H1.
   apply H. apply H1.
   
-Print lc_at'. 
-Print SN_ind. 
-simpl. intros. split.
+  simpl. intros. split.
   apply lc_at'_open_var_rec. apply H1.
   split.
   apply lc_at_open_var_rec. apply H1.
-  SearchAbout SN.
   
   apply SN_open_var. apply H1.
 Qed.
