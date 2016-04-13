@@ -387,19 +387,45 @@ Qed.
 Lemma fvar_nf: forall t x, pterm_fvar x -->lex t
       -> False.
 Proof.
-  induction t.
   intros. inversion H.
-  destruct H0. destruct H0. destruct H1.
-  inversion H0. inversion H3.
-  inversion H2. inversion H9.
-  subst.
-Admitted.
+  destruct H0. assert (pterm_fvar x = x0).
+  apply eqC_fvar_term. apply H0. subst.
+  destruct H0. destruct H1.
+  inversion H1. subst. inversion H3. subst.
+  inversion H4. inversion H4.
+Qed.
+
+(*Provar eqC_bvar_term*)
+Lemma eqc_bvar_term  : forall n t, eqc (pterm_bvar n) t -> pterm_bvar n = t.
+Proof.
+  intros n t H. inversion H. reflexivity.
+Qed.
+
+Lemma pctx_eqc_bvar_term  : forall n t, p_contextual_closure eqc (pterm_bvar n) t -> pterm_bvar n = t.
+Proof.
+  intros n t H. inversion H. inversion H0. reflexivity.
+Qed.
+
+Lemma eqC_bvar_term  : forall n t, pterm_bvar n =e t -> pterm_bvar n = t.
+Proof.
+  intros n t H. gen_eq t0 : (pterm_bvar n). induction H.
+  intro H'. rewrite H' in *. apply pctx_eqc_bvar_term. assumption.
+  intro H'. rewrite H' in *. rewrite <- IHtrans_closure.
+  apply pctx_eqc_bvar_term. assumption.
+  apply pctx_eqc_bvar_term in H. rewrite H. reflexivity.
+Qed.
+
 
 Lemma bvar_nf: forall t n, pterm_bvar n -->lex t
       -> False.
 Proof.
-  intros.
-Admitted.
+  intros. inversion H.
+  destruct H0. assert (pterm_bvar n = x).
+  apply eqC_bvar_term. apply H0. subst.
+  destruct H0. destruct H1. inversion H1.
+  subst. inversion H3. subst. inversion H4.
+  inversion H4.
+Qed.
 
 (*Lemma SN_kesner_IE: forall t u,
       (SN lex u /\ t[u] -->lex ({0 ~> u} t)) -> SN lex (t[u]).
@@ -418,9 +444,8 @@ Proof.
   intros. destruct H. apply fvar_nf in H.
   contradiction.
   
-  intros. unfold SN. destruct H. inversion H0.
-  exists x. SearchAbout SN_ind.
-  
+  intros. unfold SN in *. destruct H. inversion H0.
+  exists x. apply SN_intro. intros.
 Admitted.
 (*
   intros. inversion H. inversion H1. 
@@ -463,15 +488,39 @@ Proof.
   apply IHt1. apply H.
   split. apply lc_at_open_var_rec. apply H.
   
-  destruct H. destruct H0. inversion H1. inversion H2.
+  apply SN_kesner_to_lex with t2. split.
+  2: apply H.
+  case t2 in *.
+Admitted.
+
+Lemma SN_App: forall t1 t2, SN lex (pterm_app t1 t2) -> SN lex t1 /\ SN lex t2.
+Proof.
+  intros.
+  inversion H. inversion H0.
+  unfold SN in *.
+  split. exists x.
+  apply SN_intro. intros.
+  apply H1.
 Admitted.
 
 Lemma SN_open_var: forall t x,
       SN lex t -> SN lex (t^x).
 Proof.
-  unfold SN. intros. destruct H. exists x0.
-  generalize dependent x. inversion H. induction t.
-  intros.
+  induction t.
+  intros. unfold open.
+  case n in *. simpl. unfold SN.
+  exists 0. apply SN_intro.
+  intros. apply fvar_nf in H0. contradiction.
+  
+  intros. simpl in *. assumption.
+  
+  simpl. intros. unfold open. 
+  simpl. assumption. 
+  
+  intros. unfold open. simpl.
+  apply SN_App in H.
+  destruct H. apply IHt1 with x in H.
+  apply IHt2 with x in H0.
 Admitted.
 
 Lemma lc_at'_abs_lc_at'_open: forall t x,
