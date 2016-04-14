@@ -427,6 +427,39 @@ Proof.
   inversion H4.
 Qed.
 
+(** Properties of SN_alt. *)
+Lemma SN_alt_fvar: forall x, SN_alt lex (pterm_fvar x).
+Proof.
+  intro x. apply SN_nf.
+  unfold NF.
+  intros t H.
+  apply fvar_nf with t x; assumption.
+Qed.  
+
+Lemma SN_alt_bvar: forall n, SN_alt lex (pterm_bvar n).
+Proof.
+  intro n. apply SN_nf.
+  unfold NF.
+  intros t H.
+  apply bvar_nf with t n; assumption.
+Qed.  
+
+Lemma SN_alt_abs: forall t, SN_alt lex t -> SN_alt lex (pterm_abs t).
+Proof.
+  induction t.
+  intro H.
+  apply SN_nf.
+  unfold NF.
+  intro t.
+  intro H1.
+  inversion H1; subst.
+Admitted.
+  
+Lemma SN_alt_sub: forall t u, SN_alt lex t -> SN_alt lex u -> SN_alt lex (t[u]). 
+Proof.
+Admitted.
+
+  
 (*Lemma SN_kesner_IE: forall t u,
       (SN lex u /\ t[u] -->lex ({0 ~> u} t)) -> SN lex (t[u]).
 Proof.
@@ -461,6 +494,23 @@ Qed.*)
   SearchAbout lex.
 Admitted.**)
 
+Lemma SN_open: forall t k x, SN lex t <-> SN lex (open_rec k (pterm_fvar x) t).
+Proof.
+  induction t.
+  intros k x. split.
+  intro H. simpl.
+  case_nat.
+  unfold SN.
+  exists 0. apply SN_intro.
+  intros t H1.
+  apply fvar_nf in H1. contradiction. assumption.
+
+  Focus 3.
+  intros k x. split.
+  intro H. simpl.
+
+  
+  
 Lemma lc_at'_open_var_rec : forall x t k,
   lc_at' (S k) t -> lc_at' k (open_rec k (pterm_fvar x) t).
 Proof.
@@ -554,6 +604,34 @@ Proof.
   apply SN_open_var. apply H1.
 Qed.
 
+Lemma lc_at'_open_rec: forall i t x, lc_at' i (open_rec i (pterm_fvar x) t) <-> lc_at' (S i) t.
+Proof.
+  intros i t x.
+  generalize dependent x.
+  generalize dependent i.
+  induction t.
+  intros i x. split.
+  intro H.
+  case (n === i).
+  intro H1. subst. simpl. omega.
+
+  intro H1. simpl in H. admit.
+
+  admit.
+
+  intros i x. simpl. split. intro H; trivial. intro H; trivial.
+
+  admit.
+
+  intros i x. simpl. apply IHt.
+Admitted.
+
+Lemma lc_at'_open: forall t x, lc_at' 0 (t^x) <-> lc_at' 1 t.
+Proof.
+  unfold open.
+  apply (lc_at'_open_rec 0).
+Qed.  
+
 Lemma lc_at'_to_lab_term: forall t,
       lc_at' 0 t -> lab_term t.
 Proof.
@@ -573,7 +651,7 @@ Proof.
   simpl. intros. destruct H1.
   apply lab_term_sub with (L:=(fv t1)).
   intros. apply H0. assumption. reflexivity.
-  apply lc_at'_abs_lc_at'_open. simpl. assumption.
+  apply lc_at'_open; assumption.
   apply H. assumption.
   
   simpl. intros. destruct H1.

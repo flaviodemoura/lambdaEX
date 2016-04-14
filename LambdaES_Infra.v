@@ -851,6 +851,10 @@ Inductive SN_ind (n : nat) (R : pterm -> pterm -> Prop) (t : pterm) : Prop :=
 Definition SN (R : pterm -> pterm -> Prop) (t : pterm) := exists n, SN_ind n R t.
 Definition NF (R : pterm -> pterm -> Prop) (t : pterm) := forall t', ~ R t t'.
 
+Inductive SN_alt (R : pterm -> pterm -> Prop) (t : pterm) : Prop :=
+| SN_nf : NF R t -> SN_alt R t
+| SN_acc : forall t', R t t' -> SN_alt R t' -> SN_alt R t.
+
 Lemma mult_app_append : forall t1 t2 l, pterm_app t1 t2 // l = t1 // l ++ (t2 :: nil).
 Proof.
  intros. induction l; simpl; trivial.
