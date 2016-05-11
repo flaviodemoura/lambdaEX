@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import  Metatheory LambdaES_Defs Compare_dec LambdaES_Infra LambdaES_FV Rewriting_Defs Lambda_Ex Equation_C.
+Require Import  Metatheory LambdaES_Defs Compare_dec LambdaES_Infra LambdaES_FV Rewriting Equation_C Lambda_Ex.
 
 Lemma fv_open_ : forall t k x y, x<>y -> (x \in fv ({k~>pterm_fvar y}t )  <-> x \in fv t).
 Proof.
@@ -177,11 +177,11 @@ Fixpoint lc_at' (k:nat) (t:pterm) {struct t} : Prop :=
   | pterm_app t1 t2 => lc_at' k t1 /\ lc_at' k t2
   | pterm_abs t1    => lc_at' (S k) t1
   | pterm_sub t1 t2 => (lc_at' (S k) t1) /\ lc_at' k t2
-  | pterm_sub' t1 t2 => (lc_at' (S k) t1) /\ (lc_at k t2) /\ (SN lex t2)
+  | pterm_lsub t1 t2 => (lc_at' (S k) t1) /\ (lc_at k t2) /\ (SN lex t2)
   end.
-  (*| pterm_sub' t1 t2 => (
+  (*| pterm_lsub t1 t2 => (
     match t2 with
-    | pterm_sub' t1' t2' => False
+    | pterm_lsub t1' t2' => False
 (*  | _ => (SN lex t2) /\ lc_at' (S k) t2*)
     | _ => (SN lex t2) /\ lc_at' k t2
   end) /\ (lc_at' (S k) t1)
@@ -200,7 +200,7 @@ Inductive lab_term : pterm -> Prop :=
   | lab_term_sub : forall L t1 t2,
      (forall x, x \notin L -> lab_term (t1 ^ x)) ->
       lab_term t2 -> lab_term (t1[t2])
-  | lab_term_sub' : forall L t1 t2,
+  | lab_term_lsub : forall L t1 t2,
      (forall x, x \notin L -> lab_term (t1 ^ x)) ->
       (term t2) -> (SN lex t2) -> 
       lab_term (t1 [[ t2 ]]).
@@ -398,7 +398,7 @@ Qed.
 (*Provar eqC_bvar_term*)
 Lemma eqc_bvar_term  : forall n t, eqc (pterm_bvar n) t -> pterm_bvar n = t.
 Proof.
-  intros n t H. inversion H. reflexivity.
+  intros n t H. inversion H. 
 Qed.
 
 Lemma pctx_eqc_bvar_term  : forall n t, p_contextual_closure eqc (pterm_bvar n) t -> pterm_bvar n = t.
@@ -414,7 +414,6 @@ Proof.
   apply pctx_eqc_bvar_term. assumption.
   apply pctx_eqc_bvar_term in H. rewrite H. reflexivity.
 Qed.
-
 
 Lemma bvar_nf: forall t n, pterm_bvar n -->lex t
       -> False.
@@ -447,16 +446,22 @@ Qed.
 Lemma SN_alt_abs: forall t, SN_alt lex t -> SN_alt lex (pterm_abs t).
 Proof.
   induction t.
-  intro H.
-  apply SN_nf.
-  unfold NF.
-  intro t.
-  intro H1.
-  inversion H1; subst.
+  intro H. apply SN_nf. unfold NF. introv H'. inversion H'.
+  destruct H0. destruct H0.
+  inversion H0; subst. inversion H2; subst. inversion H3; subst.
+  apply SN_acc with (pterm_bvar n). 2:assumption.
+  unfold lex. unfold red_ctx_mod_eqC.
+  exists (pterm_abs (pterm_bvar n)).
+  exists (pterm_bvar n). split. apply eqC_rf.
+  split. 2: apply eqC_rf. apply redex.
 Admitted.
   
 Lemma SN_alt_sub: forall t u, SN_alt lex t -> SN_alt lex u -> SN_alt lex (t[u]). 
 Proof.
+  intros. apply SN_acc with u.
+  unfold lex. unfold red_ctx_mod_eqC. 
+  exists u. exists u. split.
+  apply redex.
 Admitted.
 
   
@@ -655,7 +660,7 @@ Proof.
   apply H. assumption.
   
   simpl. intros. destruct H1.
-  apply lab_term_sub' with (L:= fv (t1)).
+  apply lab_term_lsub with (L:= fv (t1)).
   intros. apply H0. assumption. reflexivity.
   apply lc_at'_abs_lc_at'_open. simpl. assumption.
   rewrite <- term_eq_term' in H2.
@@ -692,7 +697,7 @@ Proof.
   simpl. apply H.
   apply IHt2. apply H.
   
-  simpl. intros. apply lab_term_sub' with (fv t1 \u fv t2).
+  simpl. intros. apply lab_term_lsub with (fv t1 \u fv t2).
   apply lc_at'_abs_iff_lab_term_open. simpl.
   apply H.
   apply term_eq_term'. unfold term'. apply H. apply H.
@@ -728,7 +733,7 @@ Fixpoint xc_rec (n:nat) (t: pterm) : pterm :=
     | pterm_app t1 t2 => pterm_app (xc_rec n t1) (xc_rec n t2)
     | pterm_abs t1 => pterm_abs (xc_rec (S n) t1)
     | pterm_sub t1 t2 => pterm_sub (xc_rec (S n) t1) (xc_rec n t2)
-    | pterm_sub' t1 t2 => (xc_rec (S n) t1)^^(t2)
+    | pterm_lsub t1 t2 => (xc_rec (S n) t1)^^(t2)
     | _ => t
   end.
 
@@ -784,4 +789,3 @@ Proof.
   apply xc_term_term. assumption.
   rewrite xc_term_term; assumption.
 Qed.
-

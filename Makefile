@@ -86,13 +86,12 @@ VFILES:=LibTactics.v\
   Metatheory_Tactics.v\
   Metatheory.v\
   LambdaES_Defs.v\
+  Rewriting.v\
   LambdaES_Tac.v\
   LambdaES_FV.v\
   LambdaES_Infra.v\
-  Rewriting_Defs.v\
-  Rewriting_Lib.v\
-  Equation_C.v\
   Lambda.v\
+  Equation_C.v\
   Lambda_Ex.v\
   LambdaESLab_Defs.v\
   LambdaESLab_Lib.v\
